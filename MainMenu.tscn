@@ -1,3 +1,49 @@
-[gd_scene format=3 uid="uid://bj0e2lbu1uuud"]
+[gd_scene load_steps=2 format=3 uid="uid://12226vpemwkh"]
 
-[node name="Node2D" type="Node2D"]
+[ext_resource type="Script" uid="uid://ub3ik60nlk4q" path="res://scripts/ui/MainMenu.gd" id="1_mainmenu"]
+
+[node name="Control (MainMenuRoot)" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_mainmenu")
+
+[node name="TextureRect (Background)" type="TextureRect" parent="."]
+layout_mode = 0
+offset_right = 1920.0
+offset_bottom = 1080.0
+
+[node name="Panel (DimLayer)" type="Panel" parent="."]
+layout_mode = 0
+offset_right = 1920.0
+offset_bottom = 1080.0
+
+[node name="CenterContainer" type="CenterContainer" parent="Panel (DimLayer)"]
+layout_mode = 0
+offset_left = 660.0
+offset_top = 200.0
+offset_right = 1260.0
+offset_bottom = 800.0
+
+[node name="VBoxContainer (MenuButtons)" type="VBoxContainer" parent="Panel (DimLayer)/CenterContainer"]
+layout_mode = 2
+alignment = 1
+
+[node name="Button (StartGameButton)" type="Button" parent="Panel (DimLayer)/CenterContainer/VBoxContainer (MenuButtons)"]
+layout_mode = 2
+text = "Start"
+
+[node name="Button (ContinueGameButton)" type="Button" parent="Panel (DimLayer)/CenterContainer/VBoxContainer (MenuButtons)"]
+layout_mode = 2
+text = "Continue"
+
+[node name="Button (GalleryButton)" type="Button" parent="Panel (DimLayer)/CenterContainer/VBoxContainer (MenuButtons)"]
+layout_mode = 2
+text = "My Gallery"
+
+[node name="Button (QuitButton)" type="Button" parent="Panel (DimLayer)/CenterContainer/VBoxContainer (MenuButtons)"]
+layout_mode = 2
+text = "Quit"

@@ -1,0 +1,16 @@
+[gd_scene load_steps=2 format=3 uid="uid://cyj8nqp0qya37"]
+
+[ext_resource type="Script" uid="uid://y6d7r7golytm" path="res://scripts/systems/SurfaceWorldGrid.gd" id="1_surface"]
+
+[node name="SubworldSurface" type="Panel"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 120.0
+offset_top = 120.0
+offset_right = -1000.0
+offset_bottom = -120.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+script = ExtResource("1_surface")
