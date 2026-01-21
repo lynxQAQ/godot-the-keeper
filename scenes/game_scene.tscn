@@ -1,0 +1,30 @@
+[gd_scene load_steps=2 format=3 uid="uid://drjocpfw6kbo7"]
+
+[ext_resource type="Script" uid="uid://ciljf6s1jbgj8" path="res://scripts/ui/GameScene.gd" id="1_gamescene"]
+
+[node name="GameScene" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_gamescene")
+
+[node name="Control (top)" type="Control" parent="."]
+anchors_preset = 0
+offset_right = 1920.0
+offset_bottom = 120.0
+
+[node name="HBoxContainer (sub_win_area)" type="HBoxContainer" parent="."]
+layout_mode = 0
+offset_top = 120.0
+offset_right = 1920.0
+offset_bottom = 960.0
+theme_override_constants/separation = 60
+
+[node name="Control (bottom)" type="Control" parent="."]
+anchors_preset = 0
+offset_top = 960.0
+offset_right = 1920.0
+offset_bottom = 1080.0

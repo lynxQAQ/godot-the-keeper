@@ -1,0 +1,16 @@
+[gd_scene load_steps=2 format=3 uid="uid://cqpv7b3ke32yx"]
+
+[ext_resource type="Script" uid="uid://bebii0ch8p54d" path="res://scripts/systems/InnerWorldGrid.gd" id="1_inner"]
+
+[node name="SubwordInner" type="Panel"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 1040.0
+offset_top = 120.0
+offset_right = -80.0
+offset_bottom = -120.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+script = ExtResource("1_inner")

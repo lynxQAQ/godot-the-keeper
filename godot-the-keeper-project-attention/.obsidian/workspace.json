@@ -185,6 +185,15 @@
   },
   "active": "238eabd8f67ebd5e",
   "lastOpenFiles": [
+    "1-Development-Progress/Common-Guidance/Untitled",
+    "1-Development-Progress/Common-Guidance/M2-fix-prompts-1.md",
+    "1-Development-Progress/Unity-Nonscript-Guidance/M2-Guidance.md",
+    "1-Development-Progress/Unity-Nonscript-Guidance/M1-Guidance.md",
+    "2-Product-Documentation/产品总述.md",
+    "README.md",
+    "项目总览.md",
+    "1-Development-Progress/README.md",
+    "1-Development-Progress/开发进度总览.md",
     "1-Development-Progress/Unity-Nonscript-Guidance/1-创建场景.md",
     "1-Development-Progress/Unity-Nonscript-Guidance/3-创建游戏场景网格系统.md",
     "1-Development-Progress/Unity-Nonscript-Guidance/README.md",
@@ -206,20 +215,11 @@
     "2-Product-Documentation/User-Interaction/User-Interface-Layout/Game-Scene",
     "2-Product-Documentation/User-Interaction/User-Interface-Layout/Untitled.md",
     "2-Product-Documentation/User-Interaction/User-Interface-Layout/Menu-Scene",
-    "2-Product-Documentation/产品总述.md",
     "2-Product-Documentation/Game-Common-Concept/Game-Type/塔防游戏.md",
-    "项目总览.md",
-    "README.md",
     "2-Product-Documentation/README.md",
     "AI-Communication",
-    "1-Development-Progress/开发进度总览.md",
     "0-Skills/Skills总览.md",
     "0-Skills/README.md",
-    "1-Development-Progress/README.md",
-    "2-Product-Documentation/Game-Common-Concept/In-Game-Element-Attribute/Investigator/调查员基础数值.md",
-    "2-Product-Documentation/Game-Common-Concept/In-Game-Element-Attribute/Truth/真理属性.md",
-    "2-Product-Documentation/Game-Common-Concept/In-Game-Element-Attribute/World/表构造力.md",
-    "2-Product-Documentation/Game-Common-Concept/In-Game-Element-Attribute/Entity/构造体类型.md",
-    "2-Product-Documentation/Game-Common-Concept/In-Game-Element-Attribute/Entity/布防规则.md"
+    "2-Product-Documentation/Game-Common-Concept/In-Game-Element-Attribute/Investigator/调查员基础数值.md"
   ]
 }

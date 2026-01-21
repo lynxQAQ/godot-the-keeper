@@ -1,11 +1,11 @@
 
 # UI场景
 UI场景大致包括：
-- 菜单页面 - Menu-Scene
-- 游戏页面 - Game-Scene
-- 结算页面（弹窗） - Settlement-Dialog
-- 暂停页面（弹窗） - Pause-Dialog
-- 图鉴页面（即已解锁的卡牌、已解锁的成就等）
+- 菜单页面 - main_menu
+- 游戏页面 - game_scene
+- 结算页面（弹窗） - settlement_dialog
+- 暂停页面（弹窗） - pause-dialog
+- 图鉴页面（即已解锁的卡牌、已解锁的成就等）- gallery
 
 ## 菜单页面
 菜单页面是进入游戏的第一界面，通常是背景图+数个按键：

@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3 uid="uid://bqj8x7k2m3n4p"]
+
+[ext_resource type="Script" path="res://scripts/systems/GridCell.gd" id="1_0abc"]
+
+[node name="GridCell" type="ColorRect"]
+script = ExtResource("1_0abc")
+custom_minimum_size = Vector2(64, 32)
+color = Color(0.3, 0.3, 0.3, 0.5)
