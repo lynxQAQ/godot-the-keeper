@@ -34,11 +34,18 @@ var hovered_grid: Vector2i = Vector2i(-1, -1)
 var camera: Camera2D = null
 var grid_cell_container: Node2D = null
 
+## 网格系统规则（用于区分表里世界的不同规则）
+var grid_rule: GridSystemRule = null
+
 ## 等距原点：世界坐标，网格(0,0)在世界空间中的位置
 var iso_origin: Vector2 = Vector2.ZERO
 
 ## 拖拽状态
 var is_dragging: bool = false
+
+## 连续开垦状态（长按拖动开垦）
+var is_continuous_exploring: bool = false
+var explored_grids_in_drag: Dictionary = {}  # 本次拖动中已处理的网格（避免重复）
 
 # ========== 生命周期 ==========
 func _ready():
@@ -69,6 +76,10 @@ func _init_after_frame():
 	_update_iso_origin()
 	_initialize_grid_map()
 	_set_zoom(1.0) # 初始化缩放
+	
+	# 如果规则系统已设置，更新其grid_manager引用
+	if grid_rule:
+		grid_rule.grid_manager = grid_manager
 
 func _process(_delta: float) -> void:
 	# 持续检查鼠标是否在视口内，如果不在则清除 hover 状态
@@ -178,29 +189,43 @@ func _input(event: InputEvent) -> void:
 	if enable_zoom:
 		_handle_zoom_input(event)
 	
-	# 3. 处理交互 (Hover/Click) - 仅在未拖拽时
+	# 3. 处理交互 (Hover/Click/Continuous Explore) - 仅在未拖拽时
 	if enable_interaction and not is_dragging:
 		# 检查鼠标是否在视口范围内
 		if not _is_mouse_in_viewport():
-			# 鼠标移出视口，清除 hover 状态
+			# 鼠标移出视口，清除 hover 状态和连续开垦状态
 			if hovered_grid != Vector2i(-1, -1):
 				_set_grid_hovered_state(hovered_grid, false)
 				hovered_grid = Vector2i(-1, -1)
+			if is_continuous_exploring:
+				_end_continuous_explore()
 		else:
-			# 鼠标在视口内，正常处理 hover
+			# 鼠标在视口内，正常处理 hover 和点击
 			if event is InputEventMouseMotion:
 				# 使用 get_global_mouse_position() 获取正确的世界坐标（自动处理 Camera 变换）
 				var mouse_world = get_global_mouse_position()
 				_handle_hover_logic(mouse_world)
-			elif event is InputEventMouseButton and event.pressed:
-				# 使用 get_global_mouse_position() 获取正确的世界坐标（自动处理 Camera 变换）
-				var mouse_world = get_global_mouse_position()
-				_handle_click_logic(event, mouse_world)
+				# 如果正在连续开垦，检查当前网格
+				if is_continuous_exploring:
+					_handle_continuous_explore(mouse_world)
+			elif event is InputEventMouseButton:
+				if event.button_index == MOUSE_BUTTON_LEFT:
+					if event.pressed:
+						# 左键按下：开始连续开垦模式
+						var mouse_world = get_global_mouse_position()
+						_start_continuous_explore(mouse_world)
+						# 同时处理点击逻辑（立即开垦当前网格）
+						_handle_click_logic(event, mouse_world)
+					else:
+						# 左键松开：结束连续开垦模式
+						_end_continuous_explore()
 	elif is_dragging:
-		# 拖拽时清除 hover 状态
+		# 拖拽时清除 hover 状态和连续开垦状态
 		if hovered_grid != Vector2i(-1, -1):
 			_set_grid_hovered_state(hovered_grid, false)
 			hovered_grid = Vector2i(-1, -1)
+		if is_continuous_exploring:
+			_end_continuous_explore()
 
 ## 检查鼠标是否在视口范围内
 func _is_mouse_in_viewport() -> bool:
@@ -258,6 +283,10 @@ func _handle_pan_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.keycode == KEY_SPACE:
 		if not event.pressed and is_dragging:
 			is_dragging = false
+			# 如果松开空格时左键还按着，可以开始连续开垦
+			if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and enable_interaction:
+				var mouse_world = get_global_mouse_position()
+				_start_continuous_explore(mouse_world)
 	
 	# 2. 监测鼠标按键
 	if event is InputEventMouseButton:
@@ -270,9 +299,11 @@ func _handle_pan_input(event: InputEvent) -> void:
 				drag_start_mouse_pos = get_viewport().get_mouse_position()
 				drag_start_camera_pos = camera.position
 			else:
-				# 左键松开 = 停止拖拽
+				# 左键松开 = 停止拖拽和连续开垦
 				if not event.pressed:
 					is_dragging = false
+					if is_continuous_exploring:
+						_end_continuous_explore()
 	
 	# 3. 处理拖拽移动（仅在 is_dragging 为真时）
 	if event is InputEventMouseMotion and is_dragging:
@@ -338,6 +369,44 @@ func _handle_click_logic(event: InputEventMouseButton, mouse_world_pos: Vector2)
 			selected_grid = target_grid
 			var data = grid_manager.get_grid(target_grid)
 			grid_clicked.emit(target_grid, data)
+
+## 开始连续开垦模式
+func _start_continuous_explore(mouse_world_pos: Vector2) -> void:
+	is_continuous_exploring = true
+	explored_grids_in_drag.clear()
+	
+	# 记录初始网格（如果存在）
+	var initial_grid = _find_grid_at_position(mouse_world_pos)
+	if initial_grid != Vector2i(-1, -1):
+		var key = _pos_to_key(initial_grid)
+		explored_grids_in_drag[key] = true
+
+## 结束连续开垦模式
+func _end_continuous_explore() -> void:
+	is_continuous_exploring = false
+	explored_grids_in_drag.clear()
+
+## 处理连续开垦（在鼠标移动时调用）
+func _handle_continuous_explore(mouse_world_pos: Vector2) -> void:
+	if not is_continuous_exploring:
+		return
+	
+	var target_grid = _find_grid_at_position(mouse_world_pos)
+	if target_grid == Vector2i(-1, -1):
+		return
+	
+	# 检查是否已经处理过这个网格
+	var key = _pos_to_key(target_grid)
+	if explored_grids_in_drag.has(key):
+		return
+	
+	# 标记为已处理
+	explored_grids_in_drag[key] = true
+	
+	# 触发点击事件（让SurfaceWorldGrid/InnerWorldGrid处理开垦逻辑）
+	var data = grid_manager.get_grid(target_grid)
+	if data:
+		grid_clicked.emit(target_grid, data)
 
 ## 菱形检测算法 (完全保留你的逻辑，只是入参明确为世界坐标)
 func _find_grid_at_position(world_pos: Vector2) -> Vector2i:
@@ -420,6 +489,26 @@ func _update_grid_cell(pos: Vector2i) -> void:
 ## 获取网格管理器引用
 func get_grid_manager() -> GridMapManager:
 	return grid_manager
+
+## 设置网格系统规则
+func set_grid_rule(rule: GridSystemRule) -> void:
+	grid_rule = rule
+	if grid_rule:
+		# 如果grid_manager已初始化，立即设置
+		if grid_manager:
+			grid_rule.grid_manager = grid_manager
+		# 否则等待grid_map_initialized信号
+		elif not grid_map_initialized.is_connected(_on_rule_grid_manager_ready):
+			grid_map_initialized.connect(_on_rule_grid_manager_ready)
+
+## 当网格地图初始化完成时，更新规则的grid_manager引用
+func _on_rule_grid_manager_ready() -> void:
+	if grid_rule and grid_manager:
+		grid_rule.grid_manager = grid_manager
+
+## 获取网格系统规则
+func get_grid_rule() -> GridSystemRule:
+	return grid_rule
 
 ## 网格坐标转换为世界坐标
 func grid_to_world(grid_pos: Vector2i) -> Vector2:

@@ -6,6 +6,7 @@ class_name InnerWorldGrid
 
 # ========== 预加载 ==========
 const GridSystemScene = preload("res://scenes/worlds/GridSystem.tscn")
+const GridSystemRule_Inner = preload("res://scripts/systems/GridSystemRule_Inner.gd")
 
 # ========== 信号 ==========
 ## 真理之茧被创建
@@ -46,6 +47,9 @@ func _ready():
 	grid_system.grid_state_changed.connect(_on_grid_state_changed)
 	grid_system.grid_map_initialized.connect(_on_grid_map_initialized)
 	
+	# 加载里世界规则
+	call_deferred("_load_inner_rule")
+	
 	# 初始化里世界网格
 	_initialize_inner_world()
 
@@ -72,6 +76,24 @@ func _initialize_inner_world() -> void:
 	# 延迟执行，确保 GridSystem 的 _ready() 已完成
 	call_deferred("_reinitialize_grid_system", new_size)
 
+## 加载里世界规则
+func _load_inner_rule() -> void:
+	if not grid_system:
+		return
+	
+	# 创建里世界规则（grid_manager会在GridSystem中自动设置）
+	var rule = GridSystemRule_Inner.new()
+	grid_system.set_grid_rule(rule)
+	
+	# 如果grid_manager已经初始化，立即设置
+	if grid_system.grid_manager:
+		rule.grid_manager = grid_system.grid_manager
+	else:
+		# 等待GridSystem初始化完成
+		await grid_system.grid_map_initialized
+		if rule:
+			rule.grid_manager = grid_system.grid_manager
+
 ## 重新初始化网格系统（当 grid_size 改变时）
 func _reinitialize_grid_system(new_size: Vector2i) -> void:
 	if not grid_system:
@@ -80,6 +102,9 @@ func _reinitialize_grid_system(new_size: Vector2i) -> void:
 	# 如果 GridSystem 已经初始化，使用公共方法重新初始化
 	if grid_system.grid_manager:
 		grid_system.resize_grid_map(new_size)
+		# 重新加载规则（因为grid_manager可能已更新）
+		if grid_system.get_grid_rule():
+			grid_system.get_grid_rule().grid_manager = grid_system.grid_manager
 	else:
 		# 如果还没初始化，直接设置 grid_size，_ready() 会自动处理
 		grid_system.grid_size = new_size
@@ -240,11 +265,48 @@ func update_all_activities() -> void:
 		var activity = calculate_activity(pos)
 		update_activity(pos, activity)
 
+# ========== 网格操作 ==========
+## 开垦网格（从未开垦转为已开垦）
+func explore_grid(pos: Vector2i) -> bool:
+	if not grid_system:
+		return false
+	
+	var grid_manager = grid_system.get_grid_manager()
+	if not grid_manager:
+		return false
+	
+	var grid_data = grid_manager.get_grid(pos)
+	if not grid_data:
+		return false
+	
+	# 使用规则系统检查是否可以开垦
+	var grid_rule = grid_system.get_grid_rule()
+	if grid_rule:
+		var validate_result = grid_rule.validate_explore(pos)
+		if not validate_result.valid:
+			# 可以在这里显示提示信息
+			print("无法开垦: ", validate_result.reason)
+			return false
+	
+	# 检查是否可以开垦（基础检查）
+	if not grid_data.is_unexplored():
+		return false
+	
+	# 开垦网格
+	grid_data.set_explored()
+	grid_system.set_grid(pos, grid_data)
+	
+	# 执行规则系统的后处理
+	if grid_rule:
+		grid_rule.on_explore(pos)
+	
+	return true
+
 # ========== 信号处理 ==========
 func _on_grid_clicked(grid_pos: Vector2i, grid_data: GridData) -> void:
-	# 处理网格点击的业务逻辑
-	# 例如：显示网格信息、执行操作等
-	pass
+	# 处理网格点击的业务逻辑：点击未开垦的网格时，尝试开垦
+	if grid_data and grid_data.is_unexplored():
+		explore_grid(grid_pos)
 
 func _on_grid_hovered(grid_pos: Vector2i, grid_data: GridData) -> void:
 	# 处理网格悬停的业务逻辑
