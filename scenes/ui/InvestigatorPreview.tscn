@@ -1,0 +1,78 @@
+[gd_scene load_steps=2 format=3 uid="uid://investigator_preview"]
+
+[ext_resource type="Script" path="res://scripts/ui/InvestigatorPreview.gd" id="1_preview"]
+
+[node name="InvestigatorPreview" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_preview")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = -300.0
+offset_right = 400.0
+offset_bottom = -20.0
+grow_vertical = 0
+
+[node name="NameLabel" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+text = "调查员名称"
+horizontal_alignment = 1
+
+[node name="DescriptionLabel" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+text = "调查员描述"
+autowrap_mode = 2
+
+[node name="StatsContainer" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="HealthLabel" type="Label" parent="VBoxContainer/StatsContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "生命值: 10 / 10"
+
+[node name="SanityLabel" type="Label" parent="VBoxContainer/StatsContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "理智值: 10 / 10"
+
+[node name="ExpandButton" type="Button" parent="VBoxContainer"]
+layout_mode = 2
+text = "展开"
+
+[node name="DetailsContainer" type="VBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+visible = false
+
+[node name="AttributesContainer" type="VBoxContainer" parent="VBoxContainer/DetailsContainer"]
+layout_mode = 2
+
+[node name="AttributesLabel" type="Label" parent="VBoxContainer/DetailsContainer/AttributesContainer"]
+layout_mode = 2
+text = "力量: 50 | 敏捷: 50 | 智力: 50 | 意志: 50"
+autowrap_mode = 2
+
+[node name="SkillsContainer" type="VBoxContainer" parent="VBoxContainer/DetailsContainer"]
+layout_mode = 2
+
+[node name="SkillsLabel" type="Label" parent="VBoxContainer/DetailsContainer/SkillsContainer"]
+layout_mode = 2
+text = "技能: 无"
+autowrap_mode = 2
+
+[node name="ExperiencesContainer" type="VBoxContainer" parent="VBoxContainer/DetailsContainer"]
+layout_mode = 2
+
+[node name="ExperiencesLabel" type="Label" parent="VBoxContainer/DetailsContainer/ExperiencesContainer"]
+layout_mode = 2
+text = "经历: 无"
+autowrap_mode = 2
