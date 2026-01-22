@@ -39,6 +39,15 @@ const DEFAULT_INNER_CONSTRUCT: int = 10        # 初始里构造力
 const DEFAULT_TABLE_CONSTRUCT_MAX: int = 20   # 初始表构造力上限
 const DEFAULT_INNER_CONSTRUCT_MAX: int = 20   # 初始里构造力上限
 
+# 资源消耗
+const COST_EXPLORE_SURFACE_GRID: int = 1      # 开垦表世界网格消耗的表构造力
+const COST_EXPLORE_INNER_GRID: int = 1        # 开垦里世界网格消耗的里构造力
+
+# 资源自动生成
+const AUTO_GENERATION_INTERVAL: float = 5.0   # 自动生成间隔（秒）
+const AUTO_GENERATION_TABLE_CONSTRUCT: int = 1  # 每次自动生成的表构造力
+const AUTO_GENERATION_INNER_CONSTRUCT: int = 1   # 每次自动生成的里构造力
+
 # 网格相关
 const DEFAULT_GRID_SIZE_X: int = 20           # 默认网格地图宽度
 const DEFAULT_GRID_SIZE_Y: int = 20           # 默认网格地图高度

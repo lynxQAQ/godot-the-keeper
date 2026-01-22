@@ -1,6 +1,7 @@
-[gd_scene load_steps=4 format=3 uid="uid://drjocpfw6kbo7"]
+[gd_scene load_steps=5 format=3 uid="uid://drjocpfw6kbo7"]
 
 [ext_resource type="Script" uid="uid://ciljf6s1jbgj8" path="res://scripts/ui/GameScene.gd" id="1_gamescene"]
+[ext_resource type="PackedScene" path="res://scenes/ui/ResourceDisplay.tscn" id="2_onqr8"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_w5aja"]
 bg_color = Color(1, 1, 1, 0)
@@ -39,6 +40,9 @@ script = ExtResource("1_gamescene")
 anchors_preset = 0
 offset_right = 1920.0
 offset_bottom = 120.0
+
+[node name="ResourceDisplay" parent="Control (top)" instance=ExtResource("2_onqr8")]
+layout_mode = 1
 
 [node name="HBoxContainer (sub_win_area)" type="HBoxContainer" parent="."]
 layout_mode = 0

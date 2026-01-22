@@ -292,6 +292,19 @@ func explore_grid(pos: Vector2i) -> bool:
 	if not grid_data.is_unexplored():
 		return false
 	
+	# 检查是否有足够的里构造力
+	var resource_manager = _get_resource_manager()
+	if resource_manager:
+		if not resource_manager.has_enough_inner_construct(Constants.COST_EXPLORE_INNER_GRID):
+			DebugLogger.warning("InnerWorldGrid: 里构造力不足，无法开垦网格", "InnerWorldGrid")
+			print("里构造力不足，需要 " + str(Constants.COST_EXPLORE_INNER_GRID) + " 点里构造力")
+			return false
+		
+		# 消耗里构造力
+		if not resource_manager.consume_inner_construct(Constants.COST_EXPLORE_INNER_GRID):
+			DebugLogger.warning("InnerWorldGrid: 消耗里构造力失败", "InnerWorldGrid")
+			return false
+	
 	# 开垦网格
 	grid_data.set_explored()
 	grid_system.set_grid(pos, grid_data)
@@ -300,6 +313,7 @@ func explore_grid(pos: Vector2i) -> bool:
 	if grid_rule:
 		grid_rule.on_explore(pos)
 	
+	DebugLogger.debug("InnerWorldGrid: 成功开垦网格 " + str(pos) + "，消耗 " + str(Constants.COST_EXPLORE_INNER_GRID) + " 点里构造力", "InnerWorldGrid")
 	return true
 
 # ========== 信号处理 ==========
@@ -334,4 +348,10 @@ func get_grid_system() -> GridSystem:
 func get_grid_manager() -> GridMapManager:
 	if grid_system:
 		return grid_system.get_grid_manager()
+	return null
+
+## 获取ResourceManager实例
+func _get_resource_manager():
+	if has_node("/root/ResourceManager"):
+		return get_node("/root/ResourceManager")
 	return null
