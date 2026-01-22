@@ -21,6 +21,13 @@ var grid_system: GridSystem = null
 
 # ========== 生命周期 ==========
 func _ready():
+	# 设置Control布局（重要：确保 Control 节点正确填充父容器）
+	anchors_preset = Control.PRESET_FULL_RECT
+	anchor_right = 1.0
+	anchor_bottom = 1.0
+	size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	size_flags_vertical = Control.SIZE_EXPAND_FILL
+	
 	# 实例化GridSystem场景
 	grid_system = GridSystemScene.instantiate()
 	if not grid_system:
@@ -28,10 +35,8 @@ func _ready():
 		return
 	
 	# 添加到场景树
+	# 注意：在 SubViewport 架构下，Node2D 会自动在视口内渲染，无需特殊布局
 	add_child(grid_system)
-	
-	# 设置GridSystem的布局，使其填充父容器
-	_setup_grid_system_layout()
 	
 	# 连接信号
 	grid_system.grid_clicked.connect(_on_grid_clicked)
@@ -39,59 +44,43 @@ func _ready():
 	grid_system.grid_state_changed.connect(_on_grid_state_changed)
 	grid_system.grid_map_initialized.connect(_on_grid_map_initialized)
 	
-	# 监听自身大小变化，同步更新GridContainer
-	if not resized.is_connected(_on_self_resized):
-		resized.connect(_on_self_resized)
-	
 	# 初始化表世界网格
 	_initialize_surface_world()
 
+# ========== 输入转发 ==========
+## 转发输入事件到 GridSystem（确保 GridSystem 能接收到输入）
+func _input(event: InputEvent) -> void:
+	if grid_system:
+		# 将事件传递给 GridSystem
+		# GridSystem 会自己处理，这里只是确保事件能到达
+		pass
+
 # ========== 初始化 ==========
-## 设置GridSystem的布局
-func _setup_grid_system_layout() -> void:
-	if not grid_system:
-		return
-	
-	# GridSystem是Node2D，需要确保其子节点GridContainer填充父容器
-	# 获取GridContainer并设置其大小
-	var grid_container = grid_system.get_node_or_null("GridContainer") as Control
-	if grid_container:
-		# 延迟设置，确保父容器大小已确定
-		call_deferred("_update_grid_container_size")
-
-## 更新GridContainer的大小，使其匹配父容器
-func _update_grid_container_size() -> void:
-	if not grid_system:
-		return
-	
-	# 获取父容器（即SurfaceWorldGrid）的大小
-	var parent_size = size
-	if parent_size.x <= 0 or parent_size.y <= 0:
-		# 如果大小还未确定，使用rect
-		var rect = get_rect()
-		parent_size = rect.size
-	print('SurfaceWorldGrid 容器大小', parent_size)
-	# 通过GridSystem的公共接口设置GridContainer大小
-	grid_system.set_container_size(parent_size)
-
-## 自身大小变化回调
-func _on_self_resized() -> void:
-	_update_grid_container_size()
-
 ## 初始化表世界
 func _initialize_surface_world() -> void:
 	if not grid_system:
 		return
 	
-	# 确保GridContainer大小已设置
-	_update_grid_container_size()
-	
-	# 使用默认尺寸初始化网格系统
-	var grid_size = Vector2i(
+	# 设置网格尺寸并重新初始化网格地图
+	# GridSystem 会自动根据当前所在的 SubViewport 大小计算居中
+	var new_size = Vector2i(
 		Constants.DEFAULT_GRID_SIZE_X,
 		Constants.DEFAULT_GRID_SIZE_Y
 	)
-	grid_system.initialize(grid_size)
+	# 延迟执行，确保 GridSystem 的 _ready() 已完成
+	call_deferred("_reinitialize_grid_system", new_size)
+
+## 重新初始化网格系统（当 grid_size 改变时）
+func _reinitialize_grid_system(new_size: Vector2i) -> void:
+	if not grid_system:
+		return
+	
+	# 如果 GridSystem 已经初始化，使用公共方法重新初始化
+	if grid_system.grid_manager:
+		grid_system.resize_grid_map(new_size)
+	else:
+		# 如果还没初始化，直接设置 grid_size，_ready() 会自动处理
+		grid_system.grid_size = new_size
 
 # ========== 网格操作 ==========
 ## 开垦网格（从未开垦转为已开垦）
@@ -198,12 +187,10 @@ func get_passable_neighbors(pos: Vector2i) -> Array[Vector2i]:
 # ========== 信号处理 ==========
 func _on_grid_clicked(grid_pos: Vector2i, grid_data: GridData) -> void:
 	# 处理网格点击的业务逻辑
-	# 例如：显示网格信息、执行操作等
 	pass
 
 func _on_grid_hovered(grid_pos: Vector2i, grid_data: GridData) -> void:
 	# 处理网格悬停的业务逻辑
-	# 例如：显示提示信息等
 	pass
 
 func _on_grid_state_changed(grid_pos: Vector2i, grid_data: GridData) -> void:
@@ -224,3 +211,5 @@ func get_grid_manager() -> GridMapManager:
 	if grid_system:
 		return grid_system.get_grid_manager()
 	return null
+	
+	

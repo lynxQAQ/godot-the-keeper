@@ -7,6 +7,8 @@ class_name GameScene
 # ========== 节点引用 ==========
 @onready var control_top: Control = get_node("Control (top)")
 @onready var sub_win_area: HBoxContainer = get_node("HBoxContainer (sub_win_area)")
+@onready var sub_viewport_surface: SubViewport = get_node("HBoxContainer (sub_win_area)/PanelContainer_Surface/SubViewportContainer_Surface/SubViewport_Surface")
+@onready var sub_viewport_inner: SubViewport = get_node("HBoxContainer (sub_win_area)/PanelContainer_Inner/SubViewportContainer_Inner/SubViewport_Inner")
 @onready var control_bottom: Control = get_node("Control (bottom)")
 
 # ========== 预加载 ==========
@@ -42,12 +44,12 @@ func _instantiate_subwindows() -> void:
 	# 实例化表世界子窗口
 	subworld_surface = SubworldSurfaceScene.instantiate()
 	if subworld_surface:
-		sub_win_area.add_child(subworld_surface)
+		sub_viewport_surface.add_child(subworld_surface)
 	
 	# 实例化里世界子窗口
 	subword_inner = SubwordInnerScene.instantiate()
 	if subword_inner:
-		sub_win_area.add_child(subword_inner)
+		sub_viewport_inner.add_child(subword_inner)
 
 # ========== 窗口大小改变处理 ==========
 func _notification(what):
