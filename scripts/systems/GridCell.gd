@@ -37,6 +37,7 @@ signal cell_clicked(cell: GridCell, button_index: int)
 ## 边框宽度
 @export var border_width: float = 1.0
 
+
 # ========== 内部属性 ==========
 ## 当前网格数据
 var grid_data: GridData = null
@@ -151,7 +152,8 @@ func _update_visual() -> void:
 	# 根据网格类型设置基础颜色
 	match grid_data.grid_type:
 		Constants.GRID_TYPE_UNEXPLORED:
-			current_color = default_color
+			# 未开垦网格：根据等级调整颜色
+			current_color = _get_cocoon_level_color(grid_data.cocoon_level)
 		Constants.GRID_TYPE_EXPLORED:
 			current_color = explored_color
 		Constants.GRID_TYPE_MAZE:
@@ -166,6 +168,35 @@ func _update_visual() -> void:
 		current_color = current_color.blend(hover_color)
 	
 	queue_redraw()
+
+## 根据真理之茧等级获取颜色
+## 等级越高，颜色越深，透明度越高
+func _get_cocoon_level_color(level: int) -> Color:
+	if level <= 0:
+		# 等级0：默认颜色（较浅）
+		return default_color
+	
+	# 等级大于0：根据等级调整颜色深度和透明度
+	# 基础颜色（深紫色/深蓝色调）
+	var base_color = Color(0.2, 0.1, 0.3, 0.6)  # 深紫色，透明度0.6
+	
+	# 等级越高，颜色越深，透明度越高
+	# 使用等级作为系数，最大等级假设为10
+	var max_level = 10.0
+	var level_factor = min(float(level) / max_level, 1.0)
+	
+	# 颜色深度：等级越高，RGB值越低（更暗）
+	var color_multiplier = 1.0 - (level_factor * 0.5)  # 最多变暗50%
+	
+	# 透明度：等级越高，透明度越高（更不透明）
+	var alpha = 0.5 + (level_factor * 0.5)  # 从0.5到1.0
+	
+	return Color(
+		base_color.r * color_multiplier,
+		base_color.g * color_multiplier,
+		base_color.b * color_multiplier,
+		alpha
+	)
 
 # ========== 状态设置 ==========
 ## 设置悬停状态

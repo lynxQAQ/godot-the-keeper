@@ -364,6 +364,41 @@ func _handle_hover_logic(mouse_world_pos: Vector2) -> void:
 
 func _handle_click_logic(event: InputEventMouseButton, mouse_world_pos: Vector2) -> void:
 	if event.button_index == MOUSE_BUTTON_LEFT:
+		# 先检查是否点击了 Area2D（如 Secret）
+		# 使用物理查询检查鼠标位置是否有 Area2D
+		var space_state = get_world_2d().direct_space_state
+		if space_state:
+			var query = PhysicsPointQueryParameters2D.new()
+			query.position = mouse_world_pos
+			query.collision_mask = 0xFFFFFFFF
+			var results = space_state.intersect_point(query)
+			
+			# 检查是否有可交互的 Area2D（input_pickable = true）
+			# 并且鼠标确实在 Area2D 的碰撞形状内
+			for result in results:
+				if result.collider is Area2D:
+					var area = result.collider as Area2D
+					if area.input_pickable:
+						# 获取 Area2D 的父节点（可能是 Secret）
+						var area_parent = area.get_parent()
+						if area_parent and area_parent.has_method("get_grid_position"):
+							# 这可能是 Secret，检查鼠标是否真的在 Secret 的圆形范围内
+							var secret_pos = area_parent.global_position
+							var distance = mouse_world_pos.distance_to(secret_pos)
+							# 如果 Secret 有 radius 属性，使用它；否则使用默认值
+							var secret_radius = 8.0
+							if area_parent.has("radius"):
+								secret_radius = area_parent.radius
+							# 只有当鼠标在 Secret 的圆形范围内时才拦截
+							if distance <= secret_radius:
+								# 点击了 Secret，不处理网格点击
+								# Secret 的 input_event 信号会自己处理
+								return
+						else:
+							# 其他类型的 Area2D，直接拦截（可能是其他交互对象）
+							return
+		
+		# 如果没有点击到可交互的 Area2D，处理网格点击
 		var target_grid = _find_grid_at_position(mouse_world_pos)
 		if target_grid != Vector2i(-1, -1):
 			selected_grid = target_grid

@@ -1,0 +1,60 @@
+[gd_scene load_steps=3 format=3 uid="uid://bct452dduyaij"]
+
+[ext_resource type="Script" uid="uid://bedng05c1tqsq" path="res://scripts/ui/CardUI.gd" id="1_4b4kr"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_4b4kr"]
+bg_color = Color(0, 0.69220454, 0.6456321, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[node name="CardUI" type="Control"]
+custom_minimum_size = Vector2(200, 300)
+layout_mode = 3
+anchors_preset = 0
+offset_right = 240.0
+offset_bottom = 320.0
+script = ExtResource("1_4b4kr")
+
+[node name="Panel" type="Panel" parent="."]
+layout_mode = 0
+offset_right = 240.0
+offset_bottom = 320.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_4b4kr")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = 40.0
+offset_bottom = 20.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 5
+
+[node name="CardNameLabel" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+text = "123456"
+
+[node name="CardTypeLabel" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+text = "21413414"
+
+[node name="CardCostLabel" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+text = "12414134"
+
+[node name="CardDescriptionLabel" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+text = "1413414"
+
+[node name="CardIcon" type="TextureRect" parent="VBoxContainer"]
+custom_minimum_size = Vector2(240, 20)
+layout_mode = 2

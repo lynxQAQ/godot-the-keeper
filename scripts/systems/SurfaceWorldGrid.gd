@@ -7,6 +7,7 @@ class_name SurfaceWorldGrid
 # ========== 预加载 ==========
 const GridSystemScene = preload("res://scenes/worlds/GridSystem.tscn")
 const GridSystemRule_Surface = preload("res://scripts/systems/GridSystemRule_Surface.gd")
+const SecretScene = preload("res://scenes/entities/Secret.tscn")
 
 # ========== 信号 ==========
 ## 网格被开垦
@@ -19,6 +20,19 @@ signal secret_found(grid_pos: Vector2i)
 # ========== 导出属性 ==========
 ## 网格系统实例
 var grid_system: GridSystem = null
+
+# ========== 内部状态 ==========
+## 是否已创建初始路径（防止重复创建）
+var _initial_path_created: bool = false
+
+## 当前秘密节点（如果为null表示玩家持有秘密）
+var _secret_node: Secret = null
+
+## 秘密容器节点
+var _secret_container: Node2D = null
+
+## 是否持有秘密（玩家已拾起但未放置）
+var _has_secret_in_hand: bool = false
 
 # ========== 生命周期 ==========
 func _ready():
@@ -39,6 +53,11 @@ func _ready():
 	# 注意：在 SubViewport 架构下，Node2D 会自动在视口内渲染，无需特殊布局
 	add_child(grid_system)
 	
+	# 创建秘密容器节点
+	_secret_container = Node2D.new()
+	_secret_container.name = "SecretContainer"
+	grid_system.add_child(_secret_container)
+	
 	# 连接信号
 	grid_system.grid_clicked.connect(_on_grid_clicked)
 	grid_system.grid_hovered.connect(_on_grid_hovered)
@@ -53,6 +72,7 @@ func _ready():
 
 # ========== 输入转发 ==========
 ## 转发输入事件到 GridSystem（确保 GridSystem 能接收到输入）
+## 注意：Secret 的点击由 Secret 的 Area2D 自己处理，不需要在这里拦截
 func _input(event: InputEvent) -> void:
 	if grid_system:
 		# 将事件传递给 GridSystem
@@ -213,9 +233,13 @@ func create_maze(pos: Vector2i) -> bool:
 	maze_created.emit(pos)
 	return true
 
-## 标记秘密位置
-func mark_secret(pos: Vector2i) -> bool:
-	if not grid_system:
+## 放置秘密（创建Secret场景节点）
+func place_secret(pos: Vector2i) -> bool:
+	if not grid_system or not _secret_container:
+		return false
+	
+	# 检查是否持有秘密
+	if not _has_secret_in_hand:
 		return false
 	
 	var grid_manager = grid_system.get_grid_manager()
@@ -226,11 +250,153 @@ func mark_secret(pos: Vector2i) -> bool:
 	if not grid_data:
 		return false
 	
-	grid_data.has_secret = true
-	grid_system.set_grid(pos, grid_data)
+	# 检查是否已经是已开垦的网格
+	if not grid_data.get_is_explored_type():
+		DebugLogger.warning("SurfaceWorldGrid: 无法在未开垦的网格上放置秘密", "SurfaceWorldGrid")
+		return false
+	
+	# 如果之前有秘密节点，先移除（理论上不应该有，因为已经拾起了）
+	if _secret_node:
+		_remove_secret()
+	
+	# 从场景文件实例化Secret节点
+	var secret = SecretScene.instantiate()
+	if not secret:
+		DebugLogger.error("SurfaceWorldGrid: 无法实例化Secret场景", "SurfaceWorldGrid")
+		return false
+	
+	# 计算世界坐标
+	var world_pos = grid_system.grid_to_world(pos)
+	
+	# 先添加到容器（确保节点在场景树中）
+	_secret_container.add_child(secret)
+	
+	# 然后设置位置
+	secret.grid_pos = pos
+	secret.world_pos = world_pos
+	secret.position = world_pos
+	
+	# 连接点击信号
+	if not secret.secret_clicked.is_connected(_on_secret_clicked):
+		secret.secret_clicked.connect(_on_secret_clicked)
+	
+	# 更新状态
+	_secret_node = secret
+	_has_secret_in_hand = false
 	
 	secret_found.emit(pos)
+	DebugLogger.debug("SurfaceWorldGrid: 秘密已放置在 " + str(pos), "SurfaceWorldGrid")
 	return true
+
+## 移除秘密节点
+func _remove_secret() -> void:
+	if _secret_node:
+		_secret_node.queue_free()
+		_secret_node = null
+
+## 拾起秘密
+func _pickup_secret() -> bool:
+	if not _secret_node:
+		return false
+	
+	# 移除秘密节点
+	_remove_secret()
+	
+	# 更新状态：玩家持有秘密
+	_has_secret_in_hand = true
+	
+	DebugLogger.debug("SurfaceWorldGrid: 秘密已拾起", "SurfaceWorldGrid")
+	return true
+
+## 处理秘密交互（拾起或放置）
+func _handle_secret_interaction(grid_pos: Vector2i, grid_data: GridData) -> bool:
+	# 如果玩家持有秘密，尝试放置
+	if _has_secret_in_hand:
+		# 必须放置在已开垦的网格上
+		if grid_data.get_is_explored_type():
+			if place_secret(grid_pos):
+				print("秘密已放置在: ", grid_pos)
+				return true
+			else:
+				print("无法在此位置放置秘密")
+				return false
+		else:
+			print("秘密只能放置在已开垦的网格上")
+			return false
+	
+	return false
+
+## 秘密被点击时的处理
+func _on_secret_clicked(secret: Secret) -> void:
+	if secret == _secret_node:
+		if _pickup_secret():
+			print("秘密已拾起")
+
+## 生成初始秘密（在已开垦的网格中随机选择一个）
+func _spawn_initial_secret() -> void:
+	if not grid_system or not _secret_container:
+		DebugLogger.warning("SurfaceWorldGrid: 无法生成初始秘密 - grid_system 或 _secret_container 为空", "SurfaceWorldGrid")
+		return
+	
+	var grid_manager = grid_system.get_grid_manager()
+	if not grid_manager:
+		DebugLogger.warning("SurfaceWorldGrid: 无法生成初始秘密 - grid_manager 为空", "SurfaceWorldGrid")
+		return
+	
+	# 收集所有已开垦的网格位置
+	var explored_positions: Array[Vector2i] = []
+	for x in range(grid_manager.grid_size.x):
+		for y in range(grid_manager.grid_size.y):
+			var pos = Vector2i(x, y)
+			var grid_data = grid_manager.get_grid(pos)
+			if grid_data and grid_data.get_is_explored_type():
+				explored_positions.append(pos)
+	
+	# 如果没有已开垦的网格，无法生成秘密
+	if explored_positions.is_empty():
+		DebugLogger.warning("SurfaceWorldGrid: 没有已开垦的网格，无法生成秘密", "SurfaceWorldGrid")
+		return
+	
+	# 随机选择一个已开垦的网格放置秘密
+	var random_pos = explored_positions[randi() % explored_positions.size()]
+	
+	# 直接创建 Secret 节点，不需要检查 _has_secret_in_hand（因为这是初始生成）
+	var grid_data = grid_manager.get_grid(random_pos)
+	if not grid_data or not grid_data.get_is_explored_type():
+		DebugLogger.warning("SurfaceWorldGrid: 选中的网格不是已开垦的网格", "SurfaceWorldGrid")
+		return
+	
+	# 如果之前有秘密节点，先移除（理论上不应该有）
+	if _secret_node:
+		_remove_secret()
+	
+	# 从场景文件实例化Secret节点
+	var secret = SecretScene.instantiate()
+	if not secret:
+		DebugLogger.error("SurfaceWorldGrid: 无法实例化Secret场景", "SurfaceWorldGrid")
+		return
+	
+	# 计算世界坐标
+	var world_pos = grid_system.grid_to_world(random_pos)
+	
+	# 先添加到容器（确保节点在场景树中）
+	_secret_container.add_child(secret)
+	
+	# 然后设置位置
+	secret.grid_pos = random_pos
+	secret.world_pos = world_pos
+	secret.position = world_pos
+	
+	# 连接点击信号
+	if not secret.secret_clicked.is_connected(_on_secret_clicked):
+		secret.secret_clicked.connect(_on_secret_clicked)
+	
+	# 更新状态（初始生成时，玩家不持有秘密，秘密直接放在网格上）
+	_secret_node = secret
+	_has_secret_in_hand = false
+	
+	secret_found.emit(random_pos)
+	DebugLogger.debug("SurfaceWorldGrid: 初始秘密已生成在 " + str(random_pos), "SurfaceWorldGrid")
 
 ## 检查网格是否可通行（用于寻路）
 func is_passable(pos: Vector2i) -> bool:
@@ -267,8 +433,17 @@ func get_passable_neighbors(pos: Vector2i) -> Array[Vector2i]:
 
 # ========== 信号处理 ==========
 func _on_grid_clicked(grid_pos: Vector2i, grid_data: GridData) -> void:
+	if not grid_data:
+		return
+	
+	# 优先处理秘密的拾起和放置
+	# 如果玩家持有秘密，尝试放置
+	if _has_secret_in_hand:
+		if _handle_secret_interaction(grid_pos, grid_data):
+			return
+	
 	# 处理网格点击的业务逻辑：点击未开垦的网格时，尝试开垦
-	if grid_data and grid_data.is_unexplored():
+	if grid_data.is_unexplored():
 		explore_grid(grid_pos)
 
 func _on_grid_hovered(grid_pos: Vector2i, grid_data: GridData) -> void:
@@ -281,8 +456,10 @@ func _on_grid_state_changed(grid_pos: Vector2i, grid_data: GridData) -> void:
 
 func _on_grid_map_initialized() -> void:
 	# 网格地图初始化完成后的处理
-	# 创建初始的5格开垦通路
-	call_deferred("_create_initial_path")
+	# 创建初始的5格开垦通路（只创建一次）
+	if not _initial_path_created:
+		_initial_path_created = true
+		call_deferred("_create_initial_path")
 
 ## 创建初始的5格开垦通路
 func _create_initial_path() -> void:
@@ -425,6 +602,9 @@ func _create_initial_path() -> void:
 	# 开垦所有路径上的网格（至少开垦已生成的网格）
 	for pos in path_positions:
 		_explore_grid_direct(pos)
+	
+	# 在已开垦的网格中随机生成一个秘密
+	call_deferred("_spawn_initial_secret")
 
 # ========== 公共接口 ==========
 ## 获取网格系统引用

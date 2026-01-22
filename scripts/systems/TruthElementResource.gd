@@ -5,8 +5,8 @@ class_name TruthElementResource
 ## 管理真理要素的序列（I-V）、数量追踪和状态分布统计
 
 # ========== 真理要素数据结构 ==========
-## 真理要素数据
-class TruthElement:
+## 真理要素统计信息
+class TruthElementInfo:
 	var serial: int  # 序列（1-5，对应I-V）
 	var count: int  # 数量
 	var state_distribution: Dictionary = {}  # 状态分布 {state: count}
@@ -23,14 +23,14 @@ class TruthElement:
 		}
 
 # ========== 内部变量 ==========
-var _truth_elements: Dictionary = {}  # {serial: TruthElement}
+var _truth_elements: Dictionary = {}  # {serial: TruthElementInfo}
 var _total_count: int = 0  # 总数量
 
 # ========== 初始化 ==========
 func _ready() -> void:
 	# 初始化所有序列的真理要素
 	for i in range(1, Constants.TRUTH_SERIAL_COUNT + 1):
-		_truth_elements[i] = TruthElement.new(i, 0)
+		_truth_elements[i] = TruthElementInfo.new(i, 0)
 	
 	DebugLogger.info("TruthElementResource: 初始化完成，序列数量: " + str(Constants.TRUTH_SERIAL_COUNT), "TruthElementResource")
 
@@ -48,7 +48,7 @@ func add_truth_element(serial: int, amount: int, state: int = Constants.TRUTH_ST
 		return false
 	
 	if not _truth_elements.has(serial):
-		_truth_elements[serial] = TruthElement.new(serial, 0)
+		_truth_elements[serial] = TruthElementInfo.new(serial, 0)
 	
 	var element = _truth_elements[serial]
 	element.count += amount
