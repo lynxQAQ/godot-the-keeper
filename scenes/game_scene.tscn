@@ -1,6 +1,31 @@
-[gd_scene load_steps=2 format=3 uid="uid://drjocpfw6kbo7"]
+[gd_scene load_steps=5 format=3 uid="uid://drjocpfw6kbo7"]
 
 [ext_resource type="Script" uid="uid://ciljf6s1jbgj8" path="res://scripts/ui/GameScene.gd" id="1_gamescene"]
+[ext_resource type="PackedScene" path="res://scenes/ui/ResourceDisplay.tscn" id="2_onqr8"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_w5aja"]
+bg_color = Color(1, 1, 1, 0)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 22
+border_color = Color(8.374751e-06, 0.9394896, 0.68768644, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_onqr8"]
+bg_color = Color(1, 1, 1, 0)
+border_width_left = 2
+border_width_top = 22
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 0.69144684, 0.8569829, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
 
 [node name="GameScene" type="Control"]
 layout_mode = 3
@@ -16,15 +41,43 @@ anchors_preset = 0
 offset_right = 1920.0
 offset_bottom = 120.0
 
+[node name="ResourceDisplay" parent="Control (top)" instance=ExtResource("2_onqr8")]
+layout_mode = 1
+
 [node name="HBoxContainer (sub_win_area)" type="HBoxContainer" parent="."]
 layout_mode = 0
 offset_top = 120.0
 offset_right = 1920.0
 offset_bottom = 960.0
-theme_override_constants/separation = 60
+theme_override_constants/separation = 120
+alignment = 1
+
+[node name="PanelContainer_Surface" type="PanelContainer" parent="HBoxContainer (sub_win_area)"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_w5aja")
+
+[node name="SubViewportContainer_Surface" type="SubViewportContainer" parent="HBoxContainer (sub_win_area)/PanelContainer_Surface"]
+layout_mode = 2
+
+[node name="SubViewport_Surface" type="SubViewport" parent="HBoxContainer (sub_win_area)/PanelContainer_Surface/SubViewportContainer_Surface"]
+handle_input_locally = false
+size = Vector2i(840, 840)
+render_target_update_mode = 4
+
+[node name="PanelContainer_Inner" type="PanelContainer" parent="HBoxContainer (sub_win_area)"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_onqr8")
+
+[node name="SubViewportContainer_Inner" type="SubViewportContainer" parent="HBoxContainer (sub_win_area)/PanelContainer_Inner"]
+layout_mode = 2
+
+[node name="SubViewport_Inner" type="SubViewport" parent="HBoxContainer (sub_win_area)/PanelContainer_Inner/SubViewportContainer_Inner"]
+handle_input_locally = false
+size = Vector2i(840, 840)
+render_target_update_mode = 4
 
 [node name="Control (bottom)" type="Control" parent="."]
 anchors_preset = 0
-offset_top = 960.0
+offset_top = 720.0
 offset_right = 1920.0
 offset_bottom = 1080.0

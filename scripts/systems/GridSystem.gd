@@ -3,230 +3,497 @@ class_name GridSystem
 
 ## 可复用网格系统
 ## 管理网格地图的可视化和交互
-## 可在子窗口场景中实例化使用
+## 适配 SubViewport 架构
 
 # ========== 预加载 ==========
 const Extensions = preload("res://scripts/utils/Extensions.gd")
 const GridCellScene = preload("res://scenes/worlds/GridCell.tscn")
 
 # ========== 信号 ==========
-## 网格被点击
 signal grid_clicked(grid_pos: Vector2i, grid_data: GridData)
-## 网格被悬停
 signal grid_hovered(grid_pos: Vector2i, grid_data: GridData)
-## 网格状态改变
 signal grid_state_changed(grid_pos: Vector2i, grid_data: GridData)
-## 网格地图初始化完成
 signal grid_map_initialized()
 
 # ========== 导出属性 ==========
-## 网格地图尺寸
 @export var grid_size: Vector2i = Vector2i(20, 20)
-
-## 网格单元大小（等距网格使用2:1比例，例如64x32）
 @export var cell_size: Vector2 = Vector2(64, 32)
-
-## 是否启用交互
 @export var enable_interaction: bool = true
-
-## 是否显示网格线
 @export var show_grid_lines: bool = true
+@export var enable_drag: bool = true
+@export var enable_zoom: bool = true
+@export var min_zoom: float = 0.5
+@export var max_zoom: float = 3.0
+@export var zoom_step: float = 0.1
 
 # ========== 内部属性 ==========
-## 网格地图管理器
 var grid_manager: GridMapManager
-
-## 网格Cell节点字典：key为坐标字符串，value为GridCell节点
 var grid_cells: Dictionary = {}
-
-## 当前选中的网格
 var selected_grid: Vector2i = Vector2i(-1, -1)
-
-## 当前悬停的网格
 var hovered_grid: Vector2i = Vector2i(-1, -1)
+var camera: Camera2D = null
+var grid_cell_container: Node2D = null
 
-## GridCell容器节点（使用Control以便正确显示ColorRect）
-var grid_container: Control = null
+## 网格系统规则（用于区分表里世界的不同规则）
+var grid_rule: GridSystemRule = null
 
-## 等距原点：逻辑(0,0)在容器中的位置
-## 应该位于容器顶部中心
+## 等距原点：世界坐标，网格(0,0)在世界空间中的位置
 var iso_origin: Vector2 = Vector2.ZERO
+
+## 拖拽状态
+var is_dragging: bool = false
+
+## 连续开垦状态（长按拖动开垦）
+var is_continuous_exploring: bool = false
+var explored_grids_in_drag: Dictionary = {}  # 本次拖动中已处理的网格（避免重复）
 
 # ========== 生命周期 ==========
 func _ready():
-	# 获取GridContainer节点（应该在场景中已存在）
-	grid_container = get_node_or_null("GridContainer") as Control
-	if not grid_container:
-		push_error("GridSystem: GridContainer节点不存在，请在场景中添加")
-		return
+	# 获取或创建Camera2D
+	camera = get_node_or_null("Camera2D") as Camera2D
+	if not camera:
+		camera = Camera2D.new()
+		camera.name = "Camera2D"
+		add_child(camera)
 	
-	# 初始化网格地图管理器
+	# 确保相机启用，这对 SubViewport 很重要
+	camera.enabled = true
+	
+	grid_cell_container = get_node_or_null("GridCellContainer") as Node2D
+	if not grid_cell_container:
+		grid_cell_container = Node2D.new()
+		grid_cell_container.name = "GridCellContainer"
+		add_child(grid_cell_container)
+	
 	grid_manager = GridMapManager.new(grid_size, cell_size)
 	
-	# 计算等距原点（延迟到容器大小确定后）
-	call_deferred("_update_iso_origin")
+	# 监听视口大小变化（如果父容器调整大小，我们需要重新居中）
+	get_tree().root.size_changed.connect(_on_viewport_size_changed)
 	
-	# 监听容器大小变化
-	if grid_container:
-		if not grid_container.resized.is_connected(_on_container_resized):
-			grid_container.resized.connect(_on_container_resized)
-	
-	# 初始化网格地图
-	_initialize_grid_map()
+	call_deferred("_init_after_frame")
 
-# ========== 初始化 ==========
-## 更新等距原点
+func _init_after_frame():
+	_update_iso_origin()
+	_initialize_grid_map()
+	_set_zoom(1.0) # 初始化缩放
+	
+	# 如果规则系统已设置，更新其grid_manager引用
+	if grid_rule:
+		grid_rule.grid_manager = grid_manager
+
+func _process(_delta: float) -> void:
+	# 持续检查鼠标是否在视口内，如果不在则清除 hover 状态
+	# 这样可以处理鼠标快速移出视口的情况
+	if enable_interaction and not is_dragging:
+		if not _is_mouse_in_viewport():
+			if hovered_grid != Vector2i(-1, -1):
+				_set_grid_hovered_state(hovered_grid, false)
+				hovered_grid = Vector2i(-1, -1)
+
+func _on_viewport_size_changed():
+	# 当窗口大小改变时，可以选择重新居中，或者保持原样
+	# 这里暂不自动重算，避免玩家操作时突然跳动
+	pass 
+
+# ========== 初始化核心逻辑 ==========
 func _update_iso_origin() -> void:
-	if not grid_container or not grid_manager:
-		return
+	if not grid_manager: return
 	
-	# 使用容器的实际大小计算
-	var container_size = grid_container.size
-	if container_size.x <= 0 or container_size.y <= 0:
-		# 如果容器大小还未确定，使用rect
-		var rect = grid_container.get_rect()
-		container_size = rect.size
+	# 获取当前 Viewport 的实际可视矩形大小
+	var view_size = get_viewport_rect().size
 	
-	# 计算网格的实际范围（等距投影后的范围）
-	# 网格范围：
-	# - 最左：grid_pos = (0, grid_size.y-1) -> x = (0 - (grid_size.y-1)) * cell_size.x / 2
-	# - 最右：grid_pos = (grid_size.x-1, 0) -> x = ((grid_size.x-1) - 0) * cell_size.x / 2
-	# - 最上：grid_pos = (0, 0) -> y = (0 + 0) * cell_size.y / 2 = 0
-	# - 最下：grid_pos = (grid_size.x-1, grid_size.y-1) -> y = ((grid_size.x-1) + (grid_size.y-1)) * cell_size.y / 2
-	
+	# 计算网格整体的物理宽高（世界坐标系下）
 	var min_x = (0 - (grid_size.y - 1)) * cell_size.x * 0.5
 	var max_x = ((grid_size.x - 1) - 0) * cell_size.x * 0.5
 	var min_y = 0.0
 	var max_y = ((grid_size.x - 1) + (grid_size.y - 1)) * cell_size.y * 0.5
 	
-	# 网格的实际中心（在等距投影空间中）
 	var grid_center_x = (min_x + max_x) / 2.0
 	var grid_center_y = (min_y + max_y) / 2.0
 	
-	# 等距原点：使网格在容器中居中
-	# 容器中心 - 网格中心 = 偏移量
+	# 计算原点偏移量，使网格整体居中
 	iso_origin = Vector2(
-		container_size.x / 2.0 - grid_center_x,
-		container_size.y / 2.0 - grid_center_y
+		view_size.x / 2.0 - grid_center_x,
+		view_size.y / 2.0 - grid_center_y
 	)
 	
-	# 如果网格已经创建，需要重新定位
+	# 初始时将相机对准屏幕中心
+	if camera:
+		camera.position = view_size / 2.0
+	
 	if not grid_cells.is_empty():
 		_reposition_all_grid_cells()
 
-## 容器大小变化回调
-func _on_container_resized() -> void:
-	_update_iso_origin()
-
-## 初始化网格地图
 func _initialize_grid_map() -> void:
 	if not grid_manager:
 		grid_manager = GridMapManager.new(grid_size, cell_size)
-	
-	# 确保等距原点已计算
-	if iso_origin == Vector2.ZERO and grid_container:
+	if iso_origin == Vector2.ZERO:
 		_update_iso_origin()
-	
-	# 创建所有网格Cell
 	_create_all_grid_cells()
-	
-	# 发射初始化完成信号
 	grid_map_initialized.emit()
 
-## 创建所有网格Cell
 func _create_all_grid_cells() -> void:
-	# 清除现有Cell
 	_clear_all_grid_cells()
-	
-	# 创建新的Cell
 	for x in range(grid_size.x):
 		for y in range(grid_size.y):
-			var pos = Vector2i(x, y)
-			_create_grid_cell(pos)
+			_create_grid_cell(Vector2i(x, y))
 
-## 等距坐标转换为本地坐标（等距投影）
-## 这是纯数学转换，不包含原点偏移
+func _create_grid_cell(pos: Vector2i) -> void:
+	# ... (保留原有逻辑，只要位置计算正确即可) ...
+	if not grid_manager.is_valid_position(pos): return
+	
+	var grid_cell = GridCellScene.instantiate()
+	# 计算位置：原点 + 等距偏移
+	grid_cell.position = iso_origin + iso_to_local(pos)
+	
+	if grid_cell.has_method("set_cell_size"):
+		grid_cell.set_cell_size(cell_size)
+	else:
+		grid_cell.cell_size = cell_size
+	
+	var grid_data = grid_manager.get_grid(pos)
+	if grid_cell.has_method("set_grid_data"):
+		grid_cell.set_grid_data(grid_data)
+	
+	# 这里依然可以保留信号连接，作为备用交互方式
+	# 但主要的交互我们将通过 Direct Math 在 _input 中处理
+	
+	grid_cell_container.add_child(grid_cell)
+	grid_cells[_pos_to_key(pos)] = grid_cell
+
+# ========== 核心坐标转换 (数学部分) ==========
+## 等距坐标 -> 本地物理坐标 (不含 iso_origin)
 func iso_to_local(grid_pos: Vector2i) -> Vector2:
 	return Vector2(
 		(grid_pos.x - grid_pos.y) * cell_size.x * 0.5,
 		(grid_pos.x + grid_pos.y) * cell_size.y * 0.5
 	)
 
-## 本地坐标转换为等距网格坐标（反向投影）
-func local_to_iso(local_pos: Vector2) -> Vector2i:
-	# 先减去原点偏移
-	var relative_pos = local_pos - iso_origin
-	# 然后进行反向等距转换
-	var grid_x = int((relative_pos.x / cell_size.x) + (relative_pos.y / cell_size.y))
-	var grid_y = int((relative_pos.y / cell_size.y) - (relative_pos.x / cell_size.x))
-	return Vector2i(grid_x, grid_y)
+## 世界坐标 -> 网格坐标
+func world_to_grid(world_pos: Vector2) -> Vector2i:
+	var relative_pos = world_pos - iso_origin
+	var gx = (relative_pos.x / (cell_size.x / 2) + relative_pos.y / (cell_size.y / 2)) / 2
+	var gy = (relative_pos.y / (cell_size.y / 2) - relative_pos.x / (cell_size.x / 2)) / 2
+	return Vector2i(floor(gx), floor(gy))
 
-## 创建单个网格Cell
-func _create_grid_cell(pos: Vector2i) -> void:
-	if not grid_manager or not grid_manager.is_valid_position(pos):
+# ========== 简化的输入处理 ==========
+# 使用 _input 确保能接收到所有输入事件（包括在 SubViewport 中）
+func _input(event: InputEvent) -> void:
+	if not camera: return
+	
+	# 1. 处理拖拽 (Pan)
+	if enable_drag:
+		_handle_pan_input(event)
+	
+	# 2. 处理缩放 (Zoom)
+	if enable_zoom:
+		_handle_zoom_input(event)
+	
+	# 3. 处理交互 (Hover/Click/Continuous Explore) - 仅在未拖拽时
+	if enable_interaction and not is_dragging:
+		# 检查鼠标是否在视口范围内
+		if not _is_mouse_in_viewport():
+			# 鼠标移出视口，清除 hover 状态和连续开垦状态
+			if hovered_grid != Vector2i(-1, -1):
+				_set_grid_hovered_state(hovered_grid, false)
+				hovered_grid = Vector2i(-1, -1)
+			if is_continuous_exploring:
+				_end_continuous_explore()
+		else:
+			# 鼠标在视口内，正常处理 hover 和点击
+			if event is InputEventMouseMotion:
+				# 使用 get_global_mouse_position() 获取正确的世界坐标（自动处理 Camera 变换）
+				var mouse_world = get_global_mouse_position()
+				_handle_hover_logic(mouse_world)
+				# 如果正在连续开垦，检查当前网格
+				if is_continuous_exploring:
+					_handle_continuous_explore(mouse_world)
+			elif event is InputEventMouseButton:
+				if event.button_index == MOUSE_BUTTON_LEFT:
+					if event.pressed:
+						# 左键按下：开始连续开垦模式
+						var mouse_world = get_global_mouse_position()
+						_start_continuous_explore(mouse_world)
+						# 同时处理点击逻辑（立即开垦当前网格）
+						_handle_click_logic(event, mouse_world)
+					else:
+						# 左键松开：结束连续开垦模式
+						_end_continuous_explore()
+	elif is_dragging:
+		# 拖拽时清除 hover 状态和连续开垦状态
+		if hovered_grid != Vector2i(-1, -1):
+			_set_grid_hovered_state(hovered_grid, false)
+			hovered_grid = Vector2i(-1, -1)
+		if is_continuous_exploring:
+			_end_continuous_explore()
+
+## 检查鼠标是否在视口范围内
+func _is_mouse_in_viewport() -> bool:
+	var parent = get_parent()
+	if parent is Control:
+		# 如果 GridSystem 是 Control 的子节点，检查鼠标是否在 Control 的 rect 内
+		var mouse_local = parent.get_local_mouse_position()
+		var control_rect = Rect2(Vector2.ZERO, parent.size)
+		return control_rect.has_point(mouse_local)
+	else:
+		# 如果 GridSystem 不是 Control 的子节点，检查鼠标是否在视口内
+		var viewport = get_viewport()
+		if not viewport:
+			return false
+		var mouse_screen = viewport.get_mouse_position()
+		var viewport_rect = Rect2(Vector2.ZERO, viewport.get_visible_rect().size)
+		return viewport_rect.has_point(mouse_screen)
+
+## 获取鼠标的世界坐标（适配 SubViewport 架构）
+func _get_mouse_world_position() -> Vector2:
+	# 在 SubViewport 中，需要正确获取鼠标坐标
+	var viewport = get_viewport()
+	if not viewport:
+		return get_global_mouse_position()
+	
+	# 关键修复：如果 GridSystem 是 Control 节点的子节点（如 SurfaceWorldGrid/InnerWorldGrid）
+	# 需要使用 Control 的 get_local_mouse_position() 来获取相对于 Control 的坐标
+	# 然后转换为 GridSystem 的世界坐标
+	var parent = get_parent()
+	if parent is Control:
+		# Control 的 get_local_mouse_position() 返回相对于 Control 的坐标
+		# 这个坐标可以直接作为 GridSystem 的本地坐标（因为 GridSystem 是 Control 的直接子节点）
+		# Control 的坐标空间和 Node2D 的坐标空间是独立的，但 GridSystem 作为子节点，
+		# Control 的 (0,0) 对应 GridSystem 的世界坐标 (0,0)
+		var control_local = parent.get_local_mouse_position()
+		# 将 Control 的本地坐标直接作为 GridSystem 的本地坐标
+		# 然后使用 canvas_transform 转换为相机世界坐标
+		# 注意：这里不需要考虑 GridSystem 的 position，因为 canvas_transform 已经考虑了相机的变换
+		return viewport.canvas_transform.affine_inverse() * control_local
+	else:
+		# 如果 GridSystem 不是 Control 的子节点，使用视口的鼠标位置
+		var mouse_screen = viewport.get_mouse_position()
+		# 使用 canvas_transform 的逆变换将屏幕坐标转换为世界坐标
+		# 这考虑了相机的 zoom、position 等变换
+		return viewport.canvas_transform.affine_inverse() * mouse_screen
+
+# ========== 修复后的拖拽逻辑 ==========
+var drag_start_mouse_world: Vector2 = Vector2.ZERO
+var drag_start_mouse_pos: Vector2 = Vector2.ZERO  # 拖拽开始时的鼠标位置（屏幕坐标）
+var drag_start_camera_pos: Vector2 = Vector2.ZERO
+
+# ========== 修复后的拖拽逻辑（锚点跟随版） ==========
+func _handle_pan_input(event: InputEvent) -> void:
+	# 1. 监测空格键松开：任何时候松开空格都应停止拖拽
+	if event is InputEventKey and event.keycode == KEY_SPACE:
+		if not event.pressed and is_dragging:
+			is_dragging = false
+			# 如果松开空格时左键还按着，可以开始连续开垦
+			if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and enable_interaction:
+				var mouse_world = get_global_mouse_position()
+				_start_continuous_explore(mouse_world)
+	
+	# 2. 监测鼠标按键
+	if event is InputEventMouseButton:
+		if event.button_index == MOUSE_BUTTON_LEFT:
+			# 按住空格 + 左键按下 = 开始拖拽
+			if event.pressed and Input.is_key_pressed(KEY_SPACE):
+				is_dragging = true
+				# 关键点：记录“起飞前”的坐标状态
+				# get_mouse_position() 获取的是 Viewport 内的坐标，非常稳定
+				drag_start_mouse_pos = get_viewport().get_mouse_position()
+				drag_start_camera_pos = camera.position
+			else:
+				# 左键松开 = 停止拖拽和连续开垦
+				if not event.pressed:
+					is_dragging = false
+					if is_continuous_exploring:
+						_end_continuous_explore()
+	
+	# 3. 处理拖拽移动（仅在 is_dragging 为真时）
+	if event is InputEventMouseMotion and is_dragging:
+		# 获取当前鼠标位置
+		var current_mouse_pos = get_viewport().get_mouse_position()
+		
+		# 计算鼠标移动了多少距离
+		var diff = current_mouse_pos - drag_start_mouse_pos
+		
+		# 核心公式：
+		# 目标相机位置 = 初始相机位置 - (鼠标移动距离 / 缩放倍率)
+		# 比如鼠标向右移了100px，相机就应该向左移100px（让画面看起来向右动）
+		camera.position = drag_start_camera_pos - diff / camera.zoom.x
+
+# ========== 修复后的缩放逻辑 ==========
+func _handle_zoom_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed:
+		if Input.is_key_pressed(KEY_CTRL) or Input.is_key_pressed(KEY_META):
+			if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+				_set_zoom(camera.zoom.x + zoom_step)
+			elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+				_set_zoom(camera.zoom.x - zoom_step)
+
+func _set_zoom(target_zoom: float) -> void:
+	target_zoom = clamp(target_zoom, min_zoom, max_zoom)
+	if target_zoom == camera.zoom.x: return
+
+	# 1. 获取缩放前鼠标指向的世界坐标（使用 get_global_mouse_position() 自动处理 Camera 变换）
+	var mouse_world_before = get_global_mouse_position()
+	
+	# 2. 应用缩放
+	camera.zoom = Vector2(target_zoom, target_zoom)
+	
+	# 3. 获取缩放后鼠标指向的新世界坐标（因为 zoom 变了，这个值会变）
+	var mouse_world_after = get_global_mouse_position()
+	
+	# 4. 移动相机，抵消坐标变化，实现"以鼠标为中心缩放"
+	# 公式：相机需要移动的距离 = 缩放导致的偏移差值
+	camera.position -= (mouse_world_after - mouse_world_before)
+
+# ========== 交互逻辑 (基于直接数学计算) ==========
+func _handle_hover_logic(mouse_world_pos: Vector2) -> void:
+	var target_grid = _find_grid_at_position(mouse_world_pos)
+	
+	if target_grid != hovered_grid:
+		# 退出旧的
+		if hovered_grid != Vector2i(-1, -1):
+			_set_grid_hovered_state(hovered_grid, false)
+		
+		# 进入新的
+		if target_grid != Vector2i(-1, -1):
+			hovered_grid = target_grid
+			_set_grid_hovered_state(hovered_grid, true)
+			var data = grid_manager.get_grid(target_grid)
+			grid_hovered.emit(target_grid, data)
+		else:
+			hovered_grid = Vector2i(-1, -1)
+
+func _handle_click_logic(event: InputEventMouseButton, mouse_world_pos: Vector2) -> void:
+	if event.button_index == MOUSE_BUTTON_LEFT:
+		# 先检查是否点击了 Area2D（如 Secret）
+		# 使用物理查询检查鼠标位置是否有 Area2D
+		var space_state = get_world_2d().direct_space_state
+		if space_state:
+			var query = PhysicsPointQueryParameters2D.new()
+			query.position = mouse_world_pos
+			query.collision_mask = 0xFFFFFFFF
+			var results = space_state.intersect_point(query)
+			
+			# 检查是否有可交互的 Area2D（input_pickable = true）
+			# 并且鼠标确实在 Area2D 的碰撞形状内
+			for result in results:
+				if result.collider is Area2D:
+					var area = result.collider as Area2D
+					if area.input_pickable:
+						# 获取 Area2D 的父节点（可能是 Secret）
+						var area_parent = area.get_parent()
+						if area_parent and area_parent.has_method("get_grid_position"):
+							# 这可能是 Secret，检查鼠标是否真的在 Secret 的圆形范围内
+							var secret_pos = area_parent.global_position
+							var distance = mouse_world_pos.distance_to(secret_pos)
+							# 如果 Secret 有 radius 属性，使用它；否则使用默认值
+							var secret_radius = 8.0
+							if area_parent.has("radius"):
+								secret_radius = area_parent.radius
+							# 只有当鼠标在 Secret 的圆形范围内时才拦截
+							if distance <= secret_radius:
+								# 点击了 Secret，不处理网格点击
+								# Secret 的 input_event 信号会自己处理
+								return
+						else:
+							# 其他类型的 Area2D，直接拦截（可能是其他交互对象）
+							return
+		
+		# 如果没有点击到可交互的 Area2D，处理网格点击
+		var target_grid = _find_grid_at_position(mouse_world_pos)
+		if target_grid != Vector2i(-1, -1):
+			selected_grid = target_grid
+			var data = grid_manager.get_grid(target_grid)
+			grid_clicked.emit(target_grid, data)
+
+## 开始连续开垦模式
+func _start_continuous_explore(mouse_world_pos: Vector2) -> void:
+	is_continuous_exploring = true
+	explored_grids_in_drag.clear()
+	
+	# 记录初始网格（如果存在）
+	var initial_grid = _find_grid_at_position(mouse_world_pos)
+	if initial_grid != Vector2i(-1, -1):
+		var key = _pos_to_key(initial_grid)
+		explored_grids_in_drag[key] = true
+
+## 结束连续开垦模式
+func _end_continuous_explore() -> void:
+	is_continuous_exploring = false
+	explored_grids_in_drag.clear()
+
+## 处理连续开垦（在鼠标移动时调用）
+func _handle_continuous_explore(mouse_world_pos: Vector2) -> void:
+	if not is_continuous_exploring:
 		return
 	
-	# 实例化GridCell场景
-	var grid_cell = GridCellScene.instantiate()
-	if not grid_cell:
-		push_error("GridSystem: 无法实例化GridCell场景")
+	var target_grid = _find_grid_at_position(mouse_world_pos)
+	if target_grid == Vector2i(-1, -1):
 		return
 	
-	# 计算等距本地坐标（不包含原点）
-	var iso_local = iso_to_local(pos)
-	# 应用等距原点偏移，得到最终世界位置
-	var world_pos = iso_origin + iso_local
-	# ColorRect的position是左上角，需要从中心偏移
-	grid_cell.position = world_pos - (cell_size / 2.0)
-	grid_cell.size = cell_size
-	grid_cell.mouse_filter = Control.MOUSE_FILTER_PASS  # 允许接收鼠标事件
+	# 检查是否已经处理过这个网格
+	var key = _pos_to_key(target_grid)
+	if explored_grids_in_drag.has(key):
+		return
 	
-	# 设置Cell数据
-	var grid_data = grid_manager.get_grid(pos)
-	if grid_cell.has_method("set_grid_data"):
-		grid_cell.set_grid_data(grid_data)
+	# 标记为已处理
+	explored_grids_in_drag[key] = true
 	
-	# 添加到容器
-	grid_container.add_child(grid_cell)
+	# 触发点击事件（让SurfaceWorldGrid/InnerWorldGrid处理开垦逻辑）
+	var data = grid_manager.get_grid(target_grid)
+	if data:
+		grid_clicked.emit(target_grid, data)
+
+## 菱形检测算法 (完全保留你的逻辑，只是入参明确为世界坐标)
+func _find_grid_at_position(world_pos: Vector2) -> Vector2i:
+	var grid_pos = world_to_grid(world_pos)
 	
-	# 存储引用
+	# 九宫格检测优化
+	var check_positions = [
+		grid_pos,
+		grid_pos + Vector2i(-1, -1), grid_pos + Vector2i(0, -1), grid_pos + Vector2i(1, -1),
+		grid_pos + Vector2i(-1, 0), grid_pos + Vector2i(1, 0),
+		grid_pos + Vector2i(-1, 1), grid_pos + Vector2i(0, 1), grid_pos + Vector2i(1, 1)
+	]
+	
+	for check_pos in check_positions:
+		if not grid_manager.is_valid_position(check_pos): continue
+		
+		var cell_center = iso_origin + iso_to_local(check_pos)
+		var offset = world_pos - cell_center
+		
+		var diamond_test = abs(offset.x) / (cell_size.x * 0.5) + abs(offset.y) / (cell_size.y * 0.5)
+		if diamond_test <= 1.0:
+			return check_pos
+			
+	return Vector2i(-1, -1)
+
+# ========== 辅助函数 ==========
+func _set_grid_hovered_state(pos: Vector2i, state: bool) -> void:
 	var key = _pos_to_key(pos)
-	grid_cells[key] = grid_cell
+	if grid_cells.has(key) and grid_cells[key].has_method("set_hovered"):
+		grid_cells[key].set_hovered(state)
 
-## 重新定位所有网格Cell（当等距原点改变时）
+func _pos_to_key(pos: Vector2i) -> String:
+	return "%d,%d" % [pos.x, pos.y]
+
+func _key_to_pos(key: String) -> Vector2i:
+	var p = key.split(",")
+	return Vector2i(int(p[0]), int(p[1]))
+
 func _reposition_all_grid_cells() -> void:
 	for key in grid_cells:
-		var cell = grid_cells[key]
-		if not is_instance_valid(cell):
-			continue
-		
-		# 从key恢复坐标
 		var pos = _key_to_pos(key)
-		# 重新计算位置
-		var iso_local = iso_to_local(pos)
-		var world_pos = iso_origin + iso_local
-		cell.position = world_pos - (cell_size / 2.0)
+		grid_cells[key].position = iso_origin + iso_to_local(pos)
+	_clear_all_grid_cells() # 简单起见，或者你可以只更新 position
+	_create_all_grid_cells()
 
-## 清除所有网格Cell
 func _clear_all_grid_cells() -> void:
 	for key in grid_cells:
-		var cell = grid_cells[key]
-		if is_instance_valid(cell):
-			cell.queue_free()
+		if is_instance_valid(grid_cells[key]):
+			grid_cells[key].queue_free()
 	grid_cells.clear()
 
-## 坐标转换辅助函数
-func _pos_to_key(pos: Vector2i) -> String:
-	return str(pos.x) + "," + str(pos.y)
-
-## 从key恢复坐标
-func _key_to_pos(key: String) -> Vector2i:
-	var parts = key.split(",")
-	if parts.size() != 2:
-		return Vector2i.ZERO
-	return Vector2i(int(parts[0]), int(parts[1]))
-
-# ========== 网格数据访问 ==========
+# ========== 公共接口 ==========
 ## 获取网格数据
 func get_grid(pos: Vector2i) -> GridData:
 	if not grid_manager:
@@ -254,197 +521,75 @@ func _update_grid_cell(pos: Vector2i) -> void:
 	if cell and cell.has_method("set_grid_data"):
 		cell.set_grid_data(grid_data)
 
-## 更新所有网格Cell显示
-func update_all_grid_cells() -> void:
-	for x in range(grid_size.x):
-		for y in range(grid_size.y):
-			var pos = Vector2i(x, y)
-			_update_grid_cell(pos)
-
-# ========== 输入处理 ==========
-func _input(event: InputEvent) -> void:
-	if not enable_interaction:
-		return
-	
-	if event is InputEventMouseMotion:
-		_handle_mouse_motion(event)
-	elif event is InputEventMouseButton and event.pressed:
-		_handle_mouse_click(event)
-
-## 处理鼠标移动
-func _handle_mouse_motion(event: InputEventMouseMotion) -> void:
-	var grid_pos = _world_to_grid(Vector2.ZERO)  # 使用get_local_mouse_position()
-	
-	if grid_pos != hovered_grid:
-		# 取消之前的悬停
-		if hovered_grid != Vector2i(-1, -1):
-			_set_grid_hovered(hovered_grid, false)
-		
-		# 设置新的悬停
-		if grid_manager and grid_manager.is_valid_position(grid_pos):
-			hovered_grid = grid_pos
-			_set_grid_hovered(hovered_grid, true)
-			
-			var grid_data = grid_manager.get_grid(grid_pos)
-			grid_hovered.emit(grid_pos, grid_data)
-
-## 处理鼠标点击
-func _handle_mouse_click(event: InputEventMouseButton) -> void:
-	if event.button_index != MOUSE_BUTTON_LEFT:
-		return
-	
-	var grid_pos = _world_to_grid(Vector2.ZERO)  # 使用get_local_mouse_position()
-	
-	if grid_manager and grid_manager.is_valid_position(grid_pos):
-		selected_grid = grid_pos
-		var grid_data = grid_manager.get_grid(grid_pos)
-		grid_clicked.emit(grid_pos, grid_data)
-
-## 设置网格悬停状态
-func _set_grid_hovered(pos: Vector2i, hovered: bool) -> void:
-	var key = _pos_to_key(pos)
-	if not grid_cells.has(key):
-		return
-	
-	var cell = grid_cells[key]
-	if cell and cell.has_method("set_hovered"):
-		cell.set_hovered(hovered)
-
-## 设置网格选中状态
-func set_grid_selected(pos: Vector2i, selected: bool) -> void:
-	var key = _pos_to_key(pos)
-	if not grid_cells.has(key):
-		return
-	
-	var cell = grid_cells[key]
-	if cell and cell.has_method("set_selected"):
-		cell.set_selected(selected)
-
-# ========== 坐标转换 ==========
-## 世界坐标转换为网格坐标
-func _world_to_grid(world_pos: Vector2) -> Vector2i:
-	# 获取鼠标在GridContainer中的本地坐标
-	if not grid_container:
-		return Vector2i(-1, -1)
-	
-	# 将全局鼠标位置转换为GridContainer的本地坐标
-	var local_pos = grid_container.get_local_mouse_position()
-	
-	# 使用等距反向转换
-	return local_to_iso(local_pos)
-
-## 网格坐标转换为世界坐标（相对于GridContainer的本地坐标）
-func grid_to_world(grid_pos: Vector2i) -> Vector2:
-	# 使用等距转换并应用原点
-	var iso_local = iso_to_local(grid_pos)
-	return iso_origin + iso_local
-
-# ========== 公共接口 ==========
-## 初始化网格系统（外部调用）
-func initialize(size: Vector2i, cell_size_param: Vector2 = Vector2(64, 32)) -> void:
-	grid_size = size
-	cell_size = cell_size_param
-	
-	if grid_manager:
-		grid_manager.resize_map(size)
-		grid_manager.cell_size = cell_size_param
-	
-	_initialize_grid_map()
-
 ## 获取网格管理器引用
 func get_grid_manager() -> GridMapManager:
 	return grid_manager
 
-## 设置GridContainer的大小（由父Control调用）
-func set_container_size(new_size: Vector2) -> void:
-	if not grid_container:
-		return
-	
-	grid_container.size = new_size
-	# 更新等距原点
-	_update_iso_origin()
+## 设置网格系统规则
+func set_grid_rule(rule: GridSystemRule) -> void:
+	grid_rule = rule
+	if grid_rule:
+		# 如果grid_manager已初始化，立即设置
+		if grid_manager:
+			grid_rule.grid_manager = grid_manager
+		# 否则等待grid_map_initialized信号
+		elif not grid_map_initialized.is_connected(_on_rule_grid_manager_ready):
+			grid_map_initialized.connect(_on_rule_grid_manager_ready)
 
-## 重置网格地图
-func reset_map() -> void:
+## 当网格地图初始化完成时，更新规则的grid_manager引用
+func _on_rule_grid_manager_ready() -> void:
+	if grid_rule and grid_manager:
+		grid_rule.grid_manager = grid_manager
+
+## 获取网格系统规则
+func get_grid_rule() -> GridSystemRule:
+	return grid_rule
+
+## 网格坐标转换为世界坐标
+func grid_to_world(grid_pos: Vector2i) -> Vector2:
+	var iso_local = iso_to_local(grid_pos)
+	return iso_origin + iso_local
+
+## 重新初始化网格地图（当 grid_size 改变时调用）
+func resize_grid_map(new_size: Vector2i) -> void:
+	grid_size = new_size
 	if grid_manager:
-		grid_manager.reset_map()
-	_initialize_grid_map()
+		grid_manager.resize_map(grid_size)
+		_update_iso_origin()
+		_initialize_grid_map()
 
-## 检查点是否在容器rect内（带扩展边距）
-func _is_in_container(point: Vector2, margin: float) -> bool:
-	if not grid_container:
-		return false
-	var container_rect = Rect2(Vector2.ZERO, grid_container.size)
-	container_rect = container_rect.grow(margin)
-	return container_rect.has_point(point)
-
-## 裁剪线条到容器rect内，返回裁剪后的起点和终点
-## 如果线条完全在容器外，返回false
-func _clip_line_to_rect(start: Vector2, end: Vector2, rect: Rect2) -> Array:
-	# 简化实现：如果起点或终点在rect内，就绘制整条线
-	# 如果都在外，检查中心点
-	var start_in = rect.has_point(start)
-	var end_in = rect.has_point(end)
-	
-	if start_in and end_in:
-		return [start, end, true]
-	elif start_in or end_in:
-		# 至少有一个点在rect内，绘制整条线
-		return [start, end, true]
-	else:
-		# 检查中心点
-		var center = (start + end) / 2.0
-		if rect.has_point(center):
-			return [start, end, true]
-		else:
-			return [start, end, false]
-
-## 绘制网格线（等距网格菱形线）
+# ========== 绘图 (Grid Lines) ==========
 func _draw() -> void:
-	if not show_grid_lines or not grid_manager or not grid_container:
-		return
+	if not show_grid_lines or not grid_manager: return
 	
 	var color = Color(1.0, 1.0, 1.0, 0.2)
-	var container_rect = Rect2(Vector2.ZERO, grid_container.size)
-	# 扩展rect以包含可能部分可见的网格
-	var max_cell_dimension = max(cell_size.x, cell_size.y)
-	var expanded_rect = container_rect.grow(max_cell_dimension)
+	# 核心修改：动态获取当前视口矩形，不依赖缓存的 viewport_size
+	# get_visible_rect() 在 CanvasItem 中通常等同于视口大小 (如果是根节点)
+	# 为了保险，结合 Camera 的 transform 计算可见的世界区域
+	var viewport_rect = get_viewport_rect()
+	var cam_transform = get_viewport_transform().affine_inverse()
+	var visible_rect_world = Rect2(cam_transform * viewport_rect.position, cam_transform * viewport_rect.size)
 	
-	# 等距网格需要绘制菱形边界
-	# 为每个网格绘制菱形轮廓（只绘制与容器相交的）
+	# 扩大一点渲染范围防止边缘闪烁
+	visible_rect_world = visible_rect_world.grow(max(cell_size.x, cell_size.y))
+
 	for x in range(grid_size.x):
 		for y in range(grid_size.y):
-			var grid_pos = Vector2i(x, y)
-			# 使用等距转换计算中心位置
-			var iso_local = iso_to_local(grid_pos)
-			var center = iso_origin + iso_local
+			var center = iso_origin + iso_to_local(Vector2i(x, y))
 			
-			# 检查网格中心是否在扩展的可见区域内
-			if not expanded_rect.has_point(center):
+			# 简单的视锥剔除：如果中心点不在屏幕范围内，不绘制
+			if not visible_rect_world.has_point(center):
 				continue
+				
+			var hw = cell_size.x * 0.5
+			var hh = cell_size.y * 0.5
 			
-			# 等距网格的四个顶点（相对于中心点）
-			var half_width = cell_size.x / 2.0
-			var half_height = cell_size.y / 2.0
+			var top = center + Vector2(0, -hh)
+			var right = center + Vector2(hw, 0)
+			var bottom = center + Vector2(0, hh)
+			var left = center + Vector2(-hw, 0)
 			
-			var top = center + Vector2(0, -half_height)
-			var right = center + Vector2(half_width, 0)
-			var bottom = center + Vector2(0, half_height)
-			var left = center + Vector2(-half_width, 0)
-			
-			# 绘制菱形四条边（只绘制在容器内的部分）
-			var result = _clip_line_to_rect(top, right, container_rect)
-			if result[2]:
-				draw_line(result[0], result[1], color, 1.0)
-			
-			result = _clip_line_to_rect(right, bottom, container_rect)
-			if result[2]:
-				draw_line(result[0], result[1], color, 1.0)
-			
-			result = _clip_line_to_rect(bottom, left, container_rect)
-			if result[2]:
-				draw_line(result[0], result[1], color, 1.0)
-			
-			result = _clip_line_to_rect(left, top, container_rect)
-			if result[2]:
-				draw_line(result[0], result[1], color, 1.0)
+			draw_line(top, right, color)
+			draw_line(right, bottom, color)
+			draw_line(bottom, left, color)
+			draw_line(left, top, color)

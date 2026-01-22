@@ -1,0 +1,11 @@
+[gd_scene load_steps=2 format=3 uid="uid://virtual_scene"]
+
+[ext_resource type="Script" path="res://scripts/entities/Virtual.gd" id="1_virtual"]
+
+[node name="Virtual" type="Node2D"]
+script = ExtResource("1_virtual")
+
+[node name="GPUParticles2D" type="GPUParticles2D" parent="."]
+emitting = false
+
+[node name="RangeIndicator" type="Node2D" parent="."]

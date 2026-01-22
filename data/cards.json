@@ -1,0 +1,28 @@
+{
+    "cards": [
+      {
+        "id": "entity_totem_01",
+        "name": "图腾",
+        "description": "基础实体单位",
+        "card_type": 0,
+        "serial": 1,
+        "cost_table_construct": 2,
+        "cost_inner_construct": 0,
+        "construct_data_ref": "",
+        "is_unlocked": true,
+        "is_collected": false
+      },
+      {
+        "id": "virtual_omen_01",
+        "name": "预兆",
+        "description": "基础虚体单位",
+        "card_type": 1,
+        "serial": 1,
+        "cost_table_construct": 1,
+        "cost_inner_construct": 1,
+        "construct_data_ref": "",
+        "is_unlocked": true,
+        "is_collected": false
+      }
+    ]
+  }

@@ -39,6 +39,9 @@ class_name GridData
 ## 是否有真理之茧
 @export var has_truth_cocoon: bool = false
 
+## 真理之茧等级（0-N，0表示最低等级）
+@export var cocoon_level: int = 0
+
 ## 真理要素密度（0.0-1.0）
 @export var truth_density: float = 0.0
 
@@ -120,6 +123,7 @@ func to_dict() -> Dictionary:
 		"has_secret": has_secret,
 		"has_construct": has_construct,
 		"has_truth_cocoon": has_truth_cocoon,
+		"cocoon_level": cocoon_level,
 		"truth_density": truth_density,
 		"activity_level": activity_level
 	}
@@ -139,6 +143,7 @@ func from_dict(data: Dictionary) -> void:
 	has_secret = data.get("has_secret", false)
 	has_construct = data.get("has_construct", false)
 	has_truth_cocoon = data.get("has_truth_cocoon", false)
+	cocoon_level = data.get("cocoon_level", 0)
 	truth_density = data.get("truth_density", 0.0)
 	activity_level = data.get("activity_level", 0.0)
 

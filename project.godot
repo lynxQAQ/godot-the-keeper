@@ -22,6 +22,11 @@ SignalBus="*res://autoload/SignalBus.gd"
 DataManager="*res://scripts/data/DataManager.gd"
 DebugLogger="*res://scripts/utils/Logger.gd"
 SceneManager="*res://scripts/managers/SceneManager.gd"
+ResourceManager="*res://scripts/managers/ResourceManager.gd"
+ConstructManager="*res://scripts/managers/ConstructManager.gd"
+InvestigatorManager="*res://scripts/managers/InvestigatorManager.gd"
+CardLibrary="*res://scripts/systems/CardLibrary.gd"
+CardUsage="*res://scripts/systems/CardUsage.gd"
 
 [display]
 

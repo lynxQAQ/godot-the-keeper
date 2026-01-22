@@ -17,6 +17,33 @@ const GRID_TYPE_MAZE: int = 2        # 迷宫
 const CONSTRUCT_TYPE_ENTITY: int = 0  # 实体
 const CONSTRUCT_TYPE_VIRTUAL: int = 1  # 虚体
 
+# ========== 构造体序列常量 ==========
+# 实体序列
+const ENTITY_SERIAL_TOTEM: int = 1        # 图腾
+const ENTITY_SERIAL_CREATURE: int = 2     # 造物
+const ENTITY_SERIAL_ABOMINATION: int = 3  # 魔物
+const ENTITY_SERIAL_MALEVOLENCE: int = 4  # 邪祟
+const ENTITY_SERIAL_DIVINE: int = 5       # 神祇
+
+# 虚体序列
+const VIRTUAL_SERIAL_OMEN: int = 1        # 预兆
+const VIRTUAL_SERIAL_ABERRATION: int = 2  # 异象
+const VIRTUAL_SERIAL_REVELATION: int = 3  # 启示
+const VIRTUAL_SERIAL_CATACLYSM: int = 4  # 灾厄
+const VIRTUAL_SERIAL_ORACLE: int = 5     # 神谕
+
+# ========== 构造体状态常量 ==========
+const CONSTRUCT_STATE_INACTIVE: int = 0  # 未激活
+const CONSTRUCT_STATE_ACTIVE: int = 1    # 激活
+const CONSTRUCT_STATE_DISABLED: int = 2  # 失效
+const CONSTRUCT_STATE_DESTROYED: int = 3 # 销毁
+
+# ========== 效果类型常量 ==========
+const EFFECT_TYPE_DAMAGE: String = "damage"           # 伤害
+const EFFECT_TYPE_SANITY: String = "sanity"           # 理智损失
+const EFFECT_TYPE_MOVEMENT: String = "movement"      # 移动阻碍
+const EFFECT_TYPE_STATUS: String = "status"          # 状态异常
+
 # ========== 真理要素状态常量 ==========
 const TRUTH_STATE_ACTIVE: int = 0      # 活跃
 const TRUTH_STATE_SLEEPING: int = 1    # 沉睡
@@ -38,6 +65,15 @@ const DEFAULT_TABLE_CONSTRUCT: int = 10        # 初始表构造力
 const DEFAULT_INNER_CONSTRUCT: int = 10        # 初始里构造力
 const DEFAULT_TABLE_CONSTRUCT_MAX: int = 20   # 初始表构造力上限
 const DEFAULT_INNER_CONSTRUCT_MAX: int = 20   # 初始里构造力上限
+
+# 资源消耗
+const COST_EXPLORE_SURFACE_GRID: int = 1      # 开垦表世界网格消耗的表构造力
+const COST_EXPLORE_INNER_GRID: int = 1        # 开垦里世界网格消耗的里构造力
+
+# 资源自动生成
+const AUTO_GENERATION_INTERVAL: float = 5.0   # 自动生成间隔（秒）
+const AUTO_GENERATION_TABLE_CONSTRUCT: int = 1  # 每次自动生成的表构造力
+const AUTO_GENERATION_INNER_CONSTRUCT: int = 1   # 每次自动生成的里构造力
 
 # 网格相关
 const DEFAULT_GRID_SIZE_X: int = 20           # 默认网格地图宽度
@@ -129,3 +165,49 @@ static func get_check_result_name(result: int) -> String:
 			return "大失败"
 		_:
 			return "未知结果"
+
+## 获取实体序列名称
+static func get_entity_serial_name(serial: int) -> String:
+	match serial:
+		ENTITY_SERIAL_TOTEM:
+			return "图腾"
+		ENTITY_SERIAL_CREATURE:
+			return "造物"
+		ENTITY_SERIAL_ABOMINATION:
+			return "魔物"
+		ENTITY_SERIAL_MALEVOLENCE:
+			return "邪祟"
+		ENTITY_SERIAL_DIVINE:
+			return "神祇"
+		_:
+			return "未知序列"
+
+## 获取虚体序列名称
+static func get_virtual_serial_name(serial: int) -> String:
+	match serial:
+		VIRTUAL_SERIAL_OMEN:
+			return "预兆"
+		VIRTUAL_SERIAL_ABERRATION:
+			return "异象"
+		VIRTUAL_SERIAL_REVELATION:
+			return "启示"
+		VIRTUAL_SERIAL_CATACLYSM:
+			return "灾厄"
+		VIRTUAL_SERIAL_ORACLE:
+			return "神谕"
+		_:
+			return "未知序列"
+
+## 获取构造体状态名称
+static func get_construct_state_name(state: int) -> String:
+	match state:
+		CONSTRUCT_STATE_INACTIVE:
+			return "未激活"
+		CONSTRUCT_STATE_ACTIVE:
+			return "激活"
+		CONSTRUCT_STATE_DISABLED:
+			return "失效"
+		CONSTRUCT_STATE_DESTROYED:
+			return "销毁"
+		_:
+			return "未知状态"
