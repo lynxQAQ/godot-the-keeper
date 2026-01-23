@@ -108,7 +108,21 @@ func break_cocoon(cocoon_id: String) -> bool:
 		var serial = randi() % Constants.TRUTH_SERIAL_COUNT + 1
 		released[serial] = released.get(serial, 0) + 1
 		var density = min(0.3 + (level * 0.1), 1.0)
-		inner_world_grid.create_truth_element(grid_pos, serial, density)
+		# 随机生成因果、物质、超然三个属性（每个属性范围0-100）
+		var causality_value = randi() % 101
+		var material_value = randi() % 101
+		var transcendence_value = randi() % 101
+		# 确保至少有一个属性不为0
+		if causality_value == 0 and material_value == 0 and transcendence_value == 0:
+			var random_attr = randi() % 3
+			match random_attr:
+				0:
+					causality_value = randi_range(1, 100)
+				1:
+					material_value = randi_range(1, 100)
+				2:
+					transcendence_value = randi_range(1, 100)
+		inner_world_grid.create_truth_element(grid_pos, serial, density, causality_value, material_value, transcendence_value)
 
 	# 移除可视化
 	if cocoon_nodes.has(cocoon_id):

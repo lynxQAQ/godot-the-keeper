@@ -8,7 +8,7 @@ const SubwordInnerScene = preload("res://scenes/subword_inner.tscn")
 
 # ========== 内部属性 ==========
 var subword_inner: Control = null
-var inner_world: InnerWorld = null
+var inner_world_grid_manager: InnerWorldGridManager = null
 
 # ========== 初始化 ==========
 func _ready() -> void:
@@ -19,11 +19,11 @@ func _instantiate_inner_world() -> void:
 	subword_inner = SubwordInnerScene.instantiate()
 	if subword_inner:
 		add_child(subword_inner)
-		inner_world = subword_inner.get_node_or_null("InnerWorld") as InnerWorld
-		if inner_world:
+		inner_world_grid_manager = subword_inner as InnerWorldGridManager
+		if inner_world_grid_manager:
 			DebugLogger.info("InnerWorldInitializer: 里世界场景已实例化", "InnerWorldInitializer")
 		else:
-			DebugLogger.warning("InnerWorldInitializer: 未找到InnerWorld节点", "InnerWorldInitializer")
+			DebugLogger.warning("InnerWorldInitializer: 未找到InnerWorldGridManager节点", "InnerWorldInitializer")
 	else:
 		DebugLogger.error("InnerWorldInitializer: 无法实例化里世界场景", "InnerWorldInitializer")
 
@@ -32,6 +32,6 @@ func _instantiate_inner_world() -> void:
 func get_inner_world_scene() -> Control:
 	return subword_inner
 
-## 获取里世界引用
-func get_inner_world() -> InnerWorld:
-	return inner_world
+## 获取里世界网格管理器引用
+func get_inner_world_grid_manager() -> InnerWorldGridManager:
+	return inner_world_grid_manager

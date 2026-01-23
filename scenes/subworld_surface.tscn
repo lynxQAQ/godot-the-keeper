@@ -1,6 +1,9 @@
-[gd_scene load_steps=3 format=3 uid="uid://cyj8nqp0qya37"]
+[gd_scene load_steps=6 format=3 uid="uid://cyj8nqp0qya37"]
 
 [ext_resource type="Script" uid="uid://y6d7r7golytm" path="res://scripts/systems/SurfaceWorldGrid.gd" id="1_surface"]
+[ext_resource type="Script" path="res://scripts/systems/SecretManager.gd" id="2_secret"]
+[ext_resource type="Script" path="res://scripts/systems/GridReclamation.gd" id="3_reclamation"]
+[ext_resource type="Script" path="res://scripts/systems/InvestigatorSpawner.gd" id="4_spawner"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_rratq"]
 
@@ -15,3 +18,12 @@ grow_vertical = 2
 size_flags_horizontal = 3
 theme_override_styles/panel = SubResource("StyleBoxEmpty_rratq")
 script = ExtResource("1_surface")
+
+[node name="SecretManager" type="Node" parent="."]
+script = ExtResource("2_secret")
+
+[node name="GridReclamation" type="Node" parent="."]
+script = ExtResource("3_reclamation")
+
+[node name="InvestigatorSpawner" type="Node" parent="."]
+script = ExtResource("4_spawner")

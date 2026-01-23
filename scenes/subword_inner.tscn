@@ -1,6 +1,11 @@
-[gd_scene load_steps=3 format=3 uid="uid://cqpv7b3ke32yx"]
+[gd_scene load_steps=8 format=3 uid="uid://cqpv7b3ke32yx"]
 
-[ext_resource type="PackedScene" path="res://scenes/worlds/InnerWorld.tscn" id="1_inner_world"]
+[ext_resource type="Script" uid="uid://delmw8o7sa80" path="res://scripts/systems/InnerWorldGridManager.gd" id="1_inner_manager"]
+[ext_resource type="Script" uid="uid://bebii0ch8p54d" path="res://scripts/systems/InnerWorldGrid.gd" id="2_inner_grid"]
+[ext_resource type="Script" uid="uid://c0kqc2hhy4hal" path="res://scripts/systems/TruthCocoon.gd" id="3_cocoon"]
+[ext_resource type="Script" uid="uid://bdqf5w7nj2ono" path="res://scripts/systems/TruthCultivation.gd" id="4_cultivation"]
+[ext_resource type="Script" uid="uid://dwu5h8ps6epvs" path="res://scripts/systems/Ritual.gd" id="5_ritual"]
+[ext_resource type="Script" uid="uid://cp3xwfqie4fgk" path="res://scripts/systems/InnerWorldGridExploration.gd" id="6_exploration"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_6l0nh"]
 
@@ -14,10 +19,24 @@ grow_horizontal = 2
 grow_vertical = 2
 size_flags_horizontal = 3
 theme_override_styles/panel = SubResource("StyleBoxEmpty_6l0nh")
+script = ExtResource("1_inner_manager")
 
-[node name="InnerWorld" parent="." instance=ExtResource("1_inner_world")]
-anchors_preset = 15
+[node name="InnerWorldGrid" type="Control" parent="."]
+anchors_preset = 0
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+script = ExtResource("2_inner_grid")
+
+[node name="TruthCocoon" type="Node" parent="."]
+script = ExtResource("3_cocoon")
+
+[node name="TruthCultivation" type="Node" parent="."]
+script = ExtResource("4_cultivation")
+
+[node name="Ritual" type="Node" parent="."]
+script = ExtResource("5_ritual")
+
+[node name="InnerWorldGridExploration" type="Node" parent="."]
+script = ExtResource("6_exploration")

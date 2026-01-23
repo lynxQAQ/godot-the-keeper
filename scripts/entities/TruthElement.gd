@@ -48,25 +48,22 @@ func set_element_data(data: TruthElementData) -> void:
 		# 设置初始位置
 		position = element_data.world_pos
 
-## 更新颜色（根据序列）
+## 更新颜色（根据最高属性）
 func _update_color() -> void:
 	if not element_data:
 		return
 	
-	# 根据序列设置不同颜色
-	match element_data.serial:
-		1:
-			element_color = Color(0.5, 0.3, 0.8, 0.8)  # 紫色
-		2:
-			element_color = Color(0.3, 0.5, 0.8, 0.8)  # 蓝色
-		3:
-			element_color = Color(0.8, 0.5, 0.3, 0.8)  # 橙色
-		4:
-			element_color = Color(0.8, 0.3, 0.3, 0.8)  # 红色
-		5:
-			element_color = Color(0.8, 0.8, 0.3, 0.8)  # 黄色
+	# 根据最高属性设置颜色
+	var dominant_attr = element_data.get_dominant_attribute()
+	match dominant_attr:
+		0:  # 因果 - 蓝色系
+			element_color = Color(0.3, 0.5, 0.9, 0.8)  # 蓝色
+		1:  # 物质 - 红色系
+			element_color = Color(0.9, 0.3, 0.3, 0.8)  # 红色
+		2:  # 超然 - 紫色系
+			element_color = Color(0.7, 0.3, 0.9, 0.8)  # 紫色
 		_:
-			element_color = Color(0.5, 0.5, 0.5, 0.8)  # 灰色
+			element_color = Color(0.5, 0.5, 0.5, 0.8)  # 灰色（默认）
 
 	# 根据状态调整颜色
 	match element_data.state:

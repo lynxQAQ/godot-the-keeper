@@ -1,0 +1,11 @@
+[gd_scene load_steps=2 format=3 uid="uid://drn02r1g105ne"]
+
+[ext_resource type="Script" uid="uid://dgmwor7mbifod" path="res://scripts/systems/GridSystemSurface.gd" id="1_gridsys_surface"]
+
+[node name="GridSystemSurface" type="Node2D"]
+script = ExtResource("1_gridsys_surface")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position_smoothing_enabled = true
+
+[node name="GridCellContainer" type="Node2D" parent="."]
