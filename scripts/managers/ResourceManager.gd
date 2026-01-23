@@ -1,7 +1,8 @@
+class_name ResourceManager
 extends Node
 
 ## 资源管理器
-## 单例，负责管理表构造力、里构造力等资源的生成、消耗、追踪和管理
+## 负责管理表构造力、里构造力等资源的生成、消耗、追踪和管理
 
 # ========== 资源数据 ==========
 var _table_construct: ResourceData  # 表构造力

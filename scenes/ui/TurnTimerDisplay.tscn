@@ -1,0 +1,8 @@
+[gd_scene format=3 uid="uid://d2cy6hejx2hkp"]
+
+[node name="TurnTimerDisplay" type="Control"]
+custom_minimum_size = Vector2(320, 0)
+layout_mode = 3
+anchors_preset = 0
+offset_right = 320.0
+offset_bottom = 100.0

@@ -32,6 +32,9 @@ var truth_element_nodes: Dictionary = {}
 ## 真理要素容器节点
 var truth_element_container: Node2D = null
 
+## 真理之茧系统引用
+var truth_cocoon_system: TruthCocoon = null
+
 ## 移动更新间隔（秒）
 @export var move_update_interval: float = 2.0
 
@@ -122,6 +125,7 @@ func _initialize_cocoon_levels() -> void:
 				grid_data.cocoon_level = 0
 			else:
 				grid_data.cocoon_level = 1
+			grid_data.has_truth_cocoon = grid_data.cocoon_level > 0
 			
 			# 更新网格数据
 			grid_system.set_grid(pos, grid_data)
@@ -238,6 +242,11 @@ func create_truth_element(pos: Vector2i, serial: int = 1, density: float = 0.5) 
 	
 	# 更新网格密度
 	place_truth_element(pos, density)
+
+	# 更新资源管理器中的真理要素数量
+	var resource_manager = _get_resource_manager()
+	if resource_manager:
+		resource_manager.add_truth_element(serial, 1, element_data.state)
 	
 	DebugLogger.debug("InnerWorldGrid: 创建真理要素 " + element_data.id + " 在位置 " + str(pos), "InnerWorldGrid")
 	return element_data
@@ -396,17 +405,13 @@ func explore_grid(pos: Vector2i) -> bool:
 	
 	# 开垦网格
 	grid_data.set_explored()
-	grid_system.set_grid(pos, grid_data)
-	
-	# 如果开垦前等级不为0，则生成真理要素
+	# 如果存在真理之茧，保持茧标记
 	if cocoon_level > 0:
-		# 根据等级设置真理要素密度（等级越高，密度越高）
-		var density = min(0.3 + (cocoon_level * 0.1), 1.0)  # 基础0.3，每级+0.1，最高1.0
-		# 随机选择序列（1-5）
-		var serial = randi() % 5 + 1
-		# 创建真理要素可视化节点
-		create_truth_element(pos, serial, density)
-		DebugLogger.debug("InnerWorldGrid: 开垦等级 " + str(cocoon_level) + " 的网格 " + str(pos) + "，生成真理要素，序列: " + str(serial) + "，密度: " + str(density), "InnerWorldGrid")
+		grid_data.has_truth_cocoon = true
+	grid_system.set_grid(pos, grid_data)
+	# 如果存在真理之茧，交由真理之茧系统处理
+	if cocoon_level > 0 and truth_cocoon_system:
+		truth_cocoon_system.create_cocoon(pos, cocoon_level)
 	
 	# 执行规则系统的后处理
 	if grid_rule:
@@ -417,8 +422,17 @@ func explore_grid(pos: Vector2i) -> bool:
 
 # ========== 信号处理 ==========
 func _on_grid_clicked(grid_pos: Vector2i, grid_data: GridData) -> void:
-	# 处理网格点击的业务逻辑：点击未开垦的网格时，尝试开垦
-	if grid_data and grid_data.is_unexplored():
+	# 处理网格点击的业务逻辑
+	if not grid_data:
+		return
+
+	# 优先处理真理之茧破茧
+	if grid_data.has_truth_cocoon and grid_data.cocoon_level > 0 and truth_cocoon_system:
+		truth_cocoon_system.break_cocoon_at(grid_pos)
+		return
+
+	# 点击未开垦的网格时，尝试开垦
+	if grid_data.is_unexplored():
 		explore_grid(grid_pos)
 
 func _on_grid_hovered(grid_pos: Vector2i, grid_data: GridData) -> void:
@@ -439,6 +453,9 @@ func _on_grid_map_initialized() -> void:
 	_initialize_cocoon_levels()
 	# 初始化所有网格的活跃度
 	update_all_activities()
+	# 同步真理之茧可视化
+	if truth_cocoon_system:
+		truth_cocoon_system.sync_from_grid()
 
 # ========== 公共接口 ==========
 ## 获取网格系统引用
@@ -456,6 +473,99 @@ func _get_resource_manager():
 	if has_node("/root/ResourceManager"):
 		return get_node("/root/ResourceManager")
 	return null
+
+# ========== 真理要素管理 ==========
+## 设置真理之茧系统
+func set_truth_cocoon_system(system: TruthCocoon) -> void:
+	truth_cocoon_system = system
+	if truth_cocoon_system:
+		truth_cocoon_system.sync_from_grid()
+
+## 获取指定序列的真理要素ID列表
+func get_truth_element_ids_by_serial(serial: int, state: int = -1) -> Array[String]:
+	var result: Array[String] = []
+	for element_id in truth_elements.keys():
+		var element_data: TruthElementData = truth_elements[element_id]
+		if element_data and element_data.serial == serial:
+			if state < 0 or element_data.state == state:
+				result.append(element_id)
+	return result
+
+## 获取指定序列的真理要素数量
+func get_truth_element_count_by_serial(serial: int, state: int = -1) -> int:
+	return get_truth_element_ids_by_serial(serial, state).size()
+
+## 移除真理要素
+func remove_truth_element(element_id: String) -> bool:
+	if not truth_elements.has(element_id):
+		return false
+	var element_data: TruthElementData = truth_elements[element_id]
+	var element_node: TruthElement = truth_element_nodes.get(element_id, null)
+	if element_node and is_instance_valid(element_node):
+		element_node.queue_free()
+	truth_element_nodes.erase(element_id)
+	truth_elements.erase(element_id)
+
+	# 更新资源统计
+	var resource_manager = _get_resource_manager()
+	if resource_manager and element_data:
+		resource_manager.subtract_truth_element(element_data.serial, 1, element_data.state)
+
+	# 更新网格密度
+	_update_density_after_removal(element_data.grid_pos)
+	return true
+
+## 消耗真理要素（用于仪式）
+func consume_truth_elements(requirements: Dictionary) -> Dictionary:
+	var missing: Dictionary = {}
+	for serial in requirements.keys():
+		var serial_int = int(serial)
+		var need = int(requirements[serial])
+		var available = get_truth_element_count_by_serial(serial_int)
+		if available < need:
+			missing[serial_int] = need - available
+	
+	if not missing.is_empty():
+		return {"success": false, "missing": missing}
+
+	for serial in requirements.keys():
+		var serial_int = int(serial)
+		var need = int(requirements[serial])
+		var pool: Array[String] = []
+		pool.append_array(get_truth_element_ids_by_serial(serial_int, Constants.TRUTH_STATE_ACTIVE))
+		pool.append_array(get_truth_element_ids_by_serial(serial_int, Constants.TRUTH_STATE_SLEEPING))
+		pool.append_array(get_truth_element_ids_by_serial(serial_int, Constants.TRUTH_STATE_EXTINCT))
+		pool.append_array(get_truth_element_ids_by_serial(serial_int, Constants.TRUTH_STATE_SUBLIMATED))
+		for i in range(min(need, pool.size())):
+			remove_truth_element(pool[i])
+
+	return {"success": true, "missing": {}}
+
+## 更新真理要素视觉
+func refresh_truth_element_visual(element_id: String) -> void:
+	if truth_element_nodes.has(element_id):
+		var element_node: TruthElement = truth_element_nodes[element_id]
+		if element_node:
+			element_node.refresh_state()
+
+func _update_density_after_removal(pos: Vector2i) -> void:
+	if not grid_system:
+		return
+	var grid_manager = grid_system.get_grid_manager()
+	if not grid_manager:
+		return
+	var grid_data = grid_manager.get_grid(pos)
+	if not grid_data:
+		return
+	# 如果该位置仍有真理要素，维持密度；否则归零
+	var still_exists = false
+	for element_id in truth_elements.keys():
+		var element_data: TruthElementData = truth_elements[element_id]
+		if element_data and element_data.grid_pos == pos:
+			still_exists = true
+			break
+	grid_data.truth_density = 0.5 if still_exists else 0.0
+	grid_system.set_grid(pos, grid_data)
 
 # ========== 真理要素移动管理 ==========
 ## 更新所有真理要素的移动

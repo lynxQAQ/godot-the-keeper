@@ -69,6 +69,11 @@ const DEFAULT_INNER_CONSTRUCT_MAX: int = 20   # 初始里构造力上限
 # 资源消耗
 const COST_EXPLORE_SURFACE_GRID: int = 1      # 开垦表世界网格消耗的表构造力
 const COST_EXPLORE_INNER_GRID: int = 1        # 开垦里世界网格消耗的里构造力
+const COST_BREAK_COCOON: int = 2              # 破茧消耗的里构造力
+
+# 真理之茧释放
+const COCOON_RELEASE_BASE_COUNT: int = 1      # 破茧基础释放数量
+const COCOON_RELEASE_PER_LEVEL: int = 1       # 每级额外释放数量
 
 # 资源自动生成
 const AUTO_GENERATION_INTERVAL: float = 5.0   # 自动生成间隔（秒）

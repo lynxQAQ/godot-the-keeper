@@ -1,6 +1,6 @@
 [gd_scene load_steps=3 format=3 uid="uid://cqpv7b3ke32yx"]
 
-[ext_resource type="Script" uid="uid://bebii0ch8p54d" path="res://scripts/systems/InnerWorldGrid.gd" id="1_inner"]
+[ext_resource type="PackedScene" path="res://scenes/worlds/InnerWorld.tscn" id="1_inner_world"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_6l0nh"]
 
@@ -14,4 +14,10 @@ grow_horizontal = 2
 grow_vertical = 2
 size_flags_horizontal = 3
 theme_override_styles/panel = SubResource("StyleBoxEmpty_6l0nh")
-script = ExtResource("1_inner")
+
+[node name="InnerWorld" parent="." instance=ExtResource("1_inner_world")]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2

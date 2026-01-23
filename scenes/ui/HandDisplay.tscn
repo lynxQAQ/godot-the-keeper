@@ -11,6 +11,12 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_67c78")
 
+[node name="ColorRect" type="ColorRect" parent="."]
+layout_mode = 0
+offset_right = 1920.0
+offset_bottom = 1080.0
+color = Color(0, 0, 0, 1)
+
 [node name="HandContainer" type="HBoxContainer" parent="."]
 layout_mode = 1
 anchors_preset = 15
@@ -22,8 +28,8 @@ offset_right = -20.0
 offset_bottom = -50.0
 grow_horizontal = 2
 grow_vertical = 0
-alignment = 1
 theme_override_constants/separation = 10
+alignment = 1
 
 [node name="CapacityLabel" type="Label" parent="."]
 layout_mode = 1

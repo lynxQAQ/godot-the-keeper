@@ -22,12 +22,17 @@ var investigator_pathfinding: InvestigatorPathfinding = null
 var target_world_position: Vector2 = Vector2.ZERO
 var is_moving: bool = false
 var move_speed: float = 100.0  # 像素/秒
+var has_reached_target: bool = false  # 是否已到达目标
 
 # ========== 初始化 ==========
 func _ready() -> void:
 	investigator_state = InvestigatorState.new()
 	investigator_movement = InvestigatorMovement.new()
 	investigator_pathfinding = InvestigatorPathfinding.new()
+	
+	# 初始化移动相关标志
+	has_reached_target = false
+	is_moving = false
 	
 	# 连接状态信号
 	if investigator_state:
@@ -59,6 +64,9 @@ func initialize(data: InvestigatorData, grid_manager: GridMapManager = null) -> 
 		_update_visual()
 		_update_bars()
 		
+		# 触发重绘（确保_draw被调用）
+		queue_redraw()
+		
 		# 发射信号
 		SignalBus.investigator_spawned.emit(investigator_data.id, investigator_data.position)
 		
@@ -86,7 +94,14 @@ func get_grid_position() -> Vector2i:
 func set_target_position(target: Vector2i) -> void:
 	if investigator_pathfinding:
 		var current_pos = get_grid_position()
+		# 如果目标位置与当前位置相同，直接标记为已到达
+		if current_pos == target:
+			_on_reached_target()
+			return
+		
 		investigator_pathfinding.set_target(target, current_pos)
+		# 重置到达目标标志（允许重新寻路到新目标）
+		has_reached_target = false
 
 # ========== 更新 ==========
 func _process(delta: float) -> void:
@@ -103,6 +118,10 @@ func _process(delta: float) -> void:
 ## 处理移动
 func _process_movement(delta: float) -> void:
 	if not investigator_data or not investigator_pathfinding:
+		return
+	
+	# 如果已到达目标，停止移动
+	if has_reached_target:
 		return
 	
 	# 检查是否可以移动
@@ -174,6 +193,29 @@ func _update_visual() -> void:
 		else:
 			sprite.modulate = Color.WHITE
 			sprite.color = Color(0.2, 0.6, 1, 1)
+	
+	# 触发重绘
+	queue_redraw()
+
+## 绘制调查员（使用圆形使其更明显）
+func _draw() -> void:
+	# 绘制主圆形（蓝色）
+	var main_color = Color(0.2, 0.6, 1, 1)
+	if investigator_state and investigator_state.is_dead():
+		main_color = Color(0.5, 0.5, 0.5, 0.5)
+	
+	draw_circle(Vector2.ZERO, 12.0, main_color)
+	
+	# 绘制边框（深蓝色）
+	var border_color = Color(0.1, 0.4, 0.8, 1)
+	if investigator_state and investigator_state.is_dead():
+		border_color = Color(0.3, 0.3, 0.3, 0.5)
+	
+	draw_arc(Vector2.ZERO, 12.0, 0.0, TAU, 32, border_color, 2.0)
+	
+	# 绘制内部小圆（白色高光）
+	if not (investigator_state and investigator_state.is_dead()):
+		draw_circle(Vector2(-3, -3), 3.0, Color(1, 1, 1, 0.5))
 
 func _update_bars() -> void:
 	if investigator_state:
@@ -201,8 +243,23 @@ func _on_investigator_died() -> void:
 
 # ========== 目标到达处理 ==========
 func _on_reached_target() -> void:
+	# 防止重复调用
+	if has_reached_target:
+		return
+	
+	# 设置标志位，停止移动
+	has_reached_target = true
+	
+	# 清除路径，防止重新计算
+	if investigator_pathfinding:
+		investigator_pathfinding.clear_path()
+	
+	# 停止移动动画
+	is_moving = false
+	
+	# 发射信号
 	SignalBus.investigator_victory.emit(investigator_data.id if investigator_data else "")
-	DebugLogger.info("Investigator: 调查员 " + (investigator_data.name if investigator_data else "") + " 到达目标", "Investigator")
+	DebugLogger.info("Investigator: 调查员 " + (investigator_data.name if investigator_data else "") + " 到达目标，已停止移动", "Investigator")
 
 # ========== 效果系统 ==========
 ## 应用伤害

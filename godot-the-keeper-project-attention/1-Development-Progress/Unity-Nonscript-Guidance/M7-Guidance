@@ -1,0 +1,40 @@
+
+# M7 仪式系统 - 非脚本引导
+
+## 1. 场景检查与挂载
+- 打开 `scenes/subword_inner.tscn`，确认其中实例了 `scenes/worlds/InnerWorld.tscn`。
+- `InnerWorld.tscn` 已包含：
+  - `InnerWorldGrid`（里世界网格）
+  - `RitualPanel`（仪式面板）
+
+## 2. 破茧与真理要素释放
+### 操作方式
+- 进入游戏场景后，点击里世界未开垦网格：
+  - 若该格有茧（网格颜色更深且等级>0），点击会尝试“破茧”。
+  - 破茧成功会消耗里构造力并释放真理要素。
+
+### 说明
+- 破茧成本：`Constants.COST_BREAK_COCOON`。
+- 释放数量：`COCOON_RELEASE_BASE_COUNT + level * COCOON_RELEASE_PER_LEVEL`。
+
+## 3. 真理要素培育（状态变化）
+### 说明
+- 真理要素会根据网格密度/活跃度自动改变状态：活跃/沉睡/寂灭/升华。
+- 状态变化会影响移动（只有活跃状态会移动）。
+
+## 4. 仪式执行
+### 操作方式
+- 在右侧 `RitualPanel` 选择仪式并点击“执行仪式”。
+- 成功后会消耗真理要素与资源，并将卡牌加入预备区。
+
+### 配置说明
+- 仪式配置文件：`data/rituals.json`
+- 字段示例：
+  - `required_elements`: 需要的真理要素数量（序列 → 数量）
+  - `cost_inner_construct`: 里构造力消耗
+  - `output_card_id`: 产出卡牌 ID（必须存在于 `data/cards.json`）
+
+## 5. 常见问题
+- **无法破茧**：检查里构造力是否足够。
+- **仪式执行失败**：检查真理要素数量与资源是否满足。
+- **无仪式列表**：确认 `data/rituals.json` 格式正确且路径存在。

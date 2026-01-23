@@ -154,49 +154,61 @@ func sort_by_cost() -> void:
 
 ## 筛选指定类型的卡牌
 func filter_by_type(card_type: int) -> Array[String]:
+	if GameManagers.CardLibrary == null:
+		return []
 	var result: Array[String] = []
 	for card_id in _cards:
-		var card = CardLibrary.get_card(card_id)
+		var card = GameManagers.CardLibrary.get_card(card_id)
 		if card != null and card.card_type == card_type:
 			result.append(card_id)
 	return result
 
 ## 筛选指定序列的卡牌
 func filter_by_serial(serial: int) -> Array[String]:
+	if GameManagers.CardLibrary == null:
+		return []
 	var result: Array[String] = []
 	for card_id in _cards:
-		var card = CardLibrary.get_card(card_id)
+		var card = GameManagers.CardLibrary.get_card(card_id)
 		if card != null and card.serial == serial:
 			result.append(card_id)
 	return result
 
 ## 筛选可以使用的卡牌（资源足够）
 func filter_playable() -> Array[String]:
+	if GameManagers.CardLibrary == null:
+		return []
 	var result: Array[String] = []
 	for card_id in _cards:
-		var card = CardLibrary.get_card(card_id)
+		var card = GameManagers.CardLibrary.get_card(card_id)
 		if card != null and card.can_afford():
 			result.append(card_id)
 	return result
 
 # ========== 排序比较函数 ==========
 func _compare_by_type(a: String, b: String) -> bool:
-	var card_a = CardLibrary.get_card(a)
-	var card_b = CardLibrary.get_card(b)
+	if GameManagers.CardLibrary == null:
+		return false
+	var card_a = GameManagers.CardLibrary.get_card(a)
+	var card_b = GameManagers.CardLibrary.get_card(b)
 	if card_a == null or card_b == null:
 		return false
 	return card_a.card_type < card_b.card_type
 
 func _compare_by_serial(a: String, b: String) -> bool:
-	var card_a = CardLibrary.get_card(a)
-	var card_b = CardLibrary.get_card(b)
+	if GameManagers.CardLibrary == null:
+		return false
+	var card_a = GameManagers.CardLibrary.get_card(a)
+	var card_b = GameManagers.CardLibrary.get_card(b)
 	if card_a == null or card_b == null:
 		return false
 	return card_a.serial < card_b.serial
 
 func _compare_by_cost(a: String, b: String) -> bool:
-	var card_a = CardLibrary.get_card(a)
-	var card_b = CardLibrary.get_card(b)
+	if GameManagers.CardLibrary == null:
+		return false
+	var card_a = GameManagers.CardLibrary.get_card(a)
+	var card_b = GameManagers.CardLibrary.get_card(b)
 	if card_a == null or card_b == null:
 		return false
 	return card_a.get_total_cost() < card_b.get_total_cost()

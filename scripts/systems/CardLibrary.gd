@@ -1,8 +1,8 @@
+class_name CardLibrary
 extends Node
 
 ## 卡牌库系统
-## 单例，负责管理所有卡牌数据、加载、查询、解锁状态等
-## 注意：不使用class_name，因为它是autoload单例
+## 负责管理所有卡牌数据、加载、查询、解锁状态等
 
 # ========== 卡牌数据存储 ==========
 var _card_database: Dictionary = {}  # 所有卡牌数据 {card_id: CardData}

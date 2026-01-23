@@ -68,6 +68,15 @@ func _update_color() -> void:
 		_:
 			element_color = Color(0.5, 0.5, 0.5, 0.8)  # 灰色
 
+	# 根据状态调整颜色
+	match element_data.state:
+		Constants.TRUTH_STATE_SLEEPING:
+			element_color = element_color.darkened(0.4)
+		Constants.TRUTH_STATE_EXTINCT:
+			element_color = Color(0.2, 0.2, 0.2, 0.5)
+		Constants.TRUTH_STATE_SUBLIMATED:
+			element_color = element_color.lightened(0.4)
+
 ## 开始移动到目标位置
 func start_move_to(target_world_pos: Vector2) -> void:
 	if is_moving:
@@ -128,3 +137,8 @@ func set_grid_position(grid_pos: Vector2i, world_pos: Vector2) -> void:
 	
 	position = world_pos
 	is_moving = false
+
+## 刷新状态显示
+func refresh_state() -> void:
+	_update_color()
+	queue_redraw()

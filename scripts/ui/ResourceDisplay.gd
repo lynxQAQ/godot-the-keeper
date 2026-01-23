@@ -33,14 +33,9 @@ func _ready() -> void:
 	_setup_truth_element_display()
 	
 	# 获取初始值
-	# 注意：ResourceManager需要配置为autoload单例才能直接访问
-	if has_node("/root/ResourceManager"):
-		var rm = get_node("/root/ResourceManager")
-		_last_table_construct = rm.get_table_construct()
-		_last_inner_construct = rm.get_inner_construct()
-	elif ResourceManager:  # 如果配置为autoload，可以直接访问
-		_last_table_construct = ResourceManager.get_table_construct()
-		_last_inner_construct = ResourceManager.get_inner_construct()
+	if GameManagers.ResourceManager:
+		_last_table_construct = GameManagers.ResourceManager.get_table_construct()
+		_last_inner_construct = GameManagers.ResourceManager.get_inner_construct()
 	
 	DebugLogger.info("ResourceDisplay: UI初始化完成", "ResourceDisplay")
 
@@ -163,11 +158,7 @@ func _get_serial_name(serial: int) -> String:
 # ========== 工具函数 ==========
 ## 获取ResourceManager实例
 func _get_resource_manager():
-	if has_node("/root/ResourceManager"):
-		return get_node("/root/ResourceManager")
-	elif ResourceManager:  # 如果配置为autoload，可以直接访问
-		return ResourceManager
-	return null
+	return GameManagers.ResourceManager
 
 # ========== 动画和提示 ==========
 ## 显示资源变化指示器

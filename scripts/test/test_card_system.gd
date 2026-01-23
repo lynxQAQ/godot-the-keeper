@@ -27,21 +27,25 @@ func _ready() -> void:
 func _test_card_library() -> void:
 	print("\n--- 测试CardLibrary ---")
 	
+	if GameManagers.CardLibrary == null:
+		print("✗ CardLibrary未初始化")
+		return
+	
 	# 测试获取卡牌
-	var card1 = CardLibrary.get_card("entity_totem_01")
+	var card1 = GameManagers.CardLibrary.get_card("entity_totem_01")
 	if card1:
 		print("✓ 找到卡牌: " + card1.name + " (ID: " + card1.id + ")")
 	else:
 		print("✗ 未找到卡牌: entity_totem_01")
 	
-	var card2 = CardLibrary.get_card("virtual_omen_01")
+	var card2 = GameManagers.CardLibrary.get_card("virtual_omen_01")
 	if card2:
 		print("✓ 找到卡牌: " + card2.name + " (ID: " + card2.id + ")")
 	else:
 		print("✗ 未找到卡牌: virtual_omen_01")
 	
 	# 测试获取所有卡牌
-	var all_cards = CardLibrary.get_all_cards()
+	var all_cards = GameManagers.CardLibrary.get_all_cards()
 	print("✓ 卡牌库中共有 " + str(all_cards.size()) + " 张卡牌")
 
 # ========== 测试手牌系统 ==========

@@ -27,12 +27,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "2-Product-Documentation/Game-Common-Concept/In-Game-Definition/Basic-Concept/真理之茧.md",
+                "file": "Human-Communication/游戏运行.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "真理之茧"
+              "title": "游戏运行"
             }
           }
         ],
@@ -200,6 +200,19 @@
   },
   "active": "4e8c7a46277a27d9",
   "lastOpenFiles": [
+    "README.md",
+    "Human-Communication/游戏运行.md",
+    "Human-Communication",
+    "2-Product-Documentation/Game-Common-Concept/In-Game-Definition/Basic-Concept/真理之茧.md",
+    "1-Development-Progress/Unity-Nonscript-Guidance/M12-Guidance.md",
+    "1-Development-Progress/Unity-Nonscript-Guidance/M11-Guidance.md",
+    "1-Development-Progress/Unity-Nonscript-Guidance/M11-Guidance",
+    "1-Development-Progress/Unity-Nonscript-Guidance/M9-Guidance.md",
+    "1-Development-Progress/Unity-Nonscript-Guidance/M10-Guidance.md",
+    "1-Development-Progress/Unity-Nonscript-Guidance/M9-Guidance",
+    "1-Development-Progress/Unity-Nonscript-Guidance/M7-Guidance",
+    "1-Development-Progress/Unity-Nonscript-Guidance/M8-Guidance.md",
+    "1-Development-Progress/Unity-Nonscript-Guidance/M7-Guidance.md",
     "1-Development-Progress/Unity-Nonscript-Guidance/M6-Guidance.md",
     "1-Development-Progress/Unity-Nonscript-Guidance/M5-Guidance.md",
     "2-Product-Documentation/产品总述.md",
@@ -208,7 +221,6 @@
     "1-Development-Progress/Common-Guidance/M2-fix-prompts-1.md",
     "1-Development-Progress/Unity-Nonscript-Guidance/M2-Guidance.md",
     "1-Development-Progress/Unity-Nonscript-Guidance/M1-Guidance.md",
-    "README.md",
     "项目总览.md",
     "1-Development-Progress/README.md",
     "1-Development-Progress/开发进度总览.md",
@@ -220,21 +232,9 @@
     "1-Development-Progress/Common-Guidance",
     "2-Product-Documentation/User-Interaction/User-Interface-Layout/Game-Scene/调查员信息展示区.md",
     "2-Product-Documentation/User-Interaction/User-Interface-Layout/Game-Scene/地图-里世界网格.md",
-    "2-Product-Documentation/User-Interaction/User-Interface-Layout/Game-Scene/地图-表世界网格.md",
-    "1-Development-Progress/Unity-Nonscript-Guidance/3-创建网格系统测试场景.md",
-    "2-Product-Documentation/User-Interaction/UI界面总览.md",
-    "1-Development-Progress/Unity-Nonscript-Guidance/2-验证创建ScriptableObject.md",
     "1-Development-Progress/Unity-Nonscript-Guidance/2-验证创建ScriptableObject",
     "1-Development-Progress/Unity-Nonscript-Guidance/1-创建场景",
     "1-Development-Progress/Unity-Nonscript-Guidance",
-    "2-Product-Documentation/User-Interaction/User-Interface-Layout/Pause-Dialog",
-    "2-Product-Documentation/User-Interaction/User-Interface-Layout/Settlement-Dialog",
-    "2-Product-Documentation/User-Interaction/User-Interface-Layout/Compendium-Scene",
-    "2-Product-Documentation/User-Interaction/User-Interface-Layout/Game-Scene",
-    "2-Product-Documentation/User-Interaction/User-Interface-Layout/Untitled.md",
-    "2-Product-Documentation/User-Interaction/User-Interface-Layout/Menu-Scene",
-    "2-Product-Documentation/Game-Common-Concept/Game-Type/塔防游戏.md",
-    "2-Product-Documentation/README.md",
-    "0-Skills/Skills总览.md"
+    "2-Product-Documentation/User-Interaction/User-Interface-Layout/Pause-Dialog"
   ]
 }
