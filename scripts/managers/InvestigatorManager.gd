@@ -1,8 +1,8 @@
+class_name InvestigatorManager
 extends Node
 
 ## 调查员管理器
-## 单例，负责管理所有调查员实例的注册、查询、更新和清理
-## 通过 autoload 访问：InvestigatorManager
+## 负责管理所有调查员实例的注册、查询、更新和清理
 
 # ========== 预加载 ==========
 const InvestigatorScene = preload("res://scenes/entities/Investigator.tscn")

@@ -1,11 +1,12 @@
+class_name ConstructManager
 extends Node
 
 ## 构造体管理器
-## 单例，负责管理所有构造体实例的注册、查询、更新和清理
+## 负责管理所有构造体实例的注册、查询、更新和清理
 
 # ========== 构造体存储 ==========
-var _entities: Dictionary = {}  # {id: Entity}
-var _virtuals: Dictionary = {}  # {id: Virtual}
+var _entities: Dictionary = {}  # {id: Entity} 实体
+var _virtuals: Dictionary = {}  # {id: Virtual} 虚体
 var _entity_by_position: Dictionary = {}  # {Vector2i: Entity}
 var _virtual_by_position: Dictionary = {}  # {Vector2i: Array[Virtual]}
 

@@ -96,9 +96,11 @@ func get_total_cost() -> int:
 
 ## 检查是否有足够的资源使用此卡牌
 func can_afford() -> bool:
-	if not ResourceManager.has_enough_table_construct(cost_table_construct):
+	if GameManagers.ResourceManager == null:
 		return false
-	if not ResourceManager.has_enough_inner_construct(cost_inner_construct):
+	if not GameManagers.ResourceManager.has_enough_table_construct(cost_table_construct):
+		return false
+	if not GameManagers.ResourceManager.has_enough_inner_construct(cost_inner_construct):
 		return false
 	return true
 

@@ -48,25 +48,31 @@ func set_element_data(data: TruthElementData) -> void:
 		# 设置初始位置
 		position = element_data.world_pos
 
-## 更新颜色（根据序列）
+## 更新颜色（根据最高属性）
 func _update_color() -> void:
 	if not element_data:
 		return
 	
-	# 根据序列设置不同颜色
-	match element_data.serial:
-		1:
-			element_color = Color(0.5, 0.3, 0.8, 0.8)  # 紫色
-		2:
-			element_color = Color(0.3, 0.5, 0.8, 0.8)  # 蓝色
-		3:
-			element_color = Color(0.8, 0.5, 0.3, 0.8)  # 橙色
-		4:
-			element_color = Color(0.8, 0.3, 0.3, 0.8)  # 红色
-		5:
-			element_color = Color(0.8, 0.8, 0.3, 0.8)  # 黄色
+	# 根据最高属性设置颜色
+	var dominant_attr = element_data.get_dominant_attribute()
+	match dominant_attr:
+		0:  # 因果 - 蓝色系
+			element_color = Color(0.3, 0.5, 0.9, 0.8)  # 蓝色
+		1:  # 物质 - 红色系
+			element_color = Color(0.9, 0.3, 0.3, 0.8)  # 红色
+		2:  # 超然 - 紫色系
+			element_color = Color(0.7, 0.3, 0.9, 0.8)  # 紫色
 		_:
-			element_color = Color(0.5, 0.5, 0.5, 0.8)  # 灰色
+			element_color = Color(0.5, 0.5, 0.5, 0.8)  # 灰色（默认）
+
+	# 根据状态调整颜色
+	match element_data.state:
+		Constants.TRUTH_STATE_SLEEPING:
+			element_color = element_color.darkened(0.4)
+		Constants.TRUTH_STATE_EXTINCT:
+			element_color = Color(0.2, 0.2, 0.2, 0.5)
+		Constants.TRUTH_STATE_SUBLIMATED:
+			element_color = element_color.lightened(0.4)
 
 ## 开始移动到目标位置
 func start_move_to(target_world_pos: Vector2) -> void:
@@ -128,3 +134,8 @@ func set_grid_position(grid_pos: Vector2i, world_pos: Vector2) -> void:
 	
 	position = world_pos
 	is_moving = false
+
+## 刷新状态显示
+func refresh_state() -> void:
+	_update_color()
+	queue_redraw()

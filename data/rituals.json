@@ -1,0 +1,26 @@
+{
+  "rituals": [
+    {
+      "id": "ritual_entity_serial_1",
+      "name": "序列I实体仪式",
+      "description": "将序列I真理要素转化为图腾卡牌",
+      "required_elements": {
+        "1": 2
+      },
+      "cost_table_construct": 0,
+      "cost_inner_construct": 2,
+      "output_card_id": "entity_totem_01"
+    },
+    {
+      "id": "ritual_virtual_serial_1",
+      "name": "序列I虚体仪式",
+      "description": "将序列I真理要素转化为预兆卡牌",
+      "required_elements": {
+        "1": 1
+      },
+      "cost_table_construct": 0,
+      "cost_inner_construct": 1,
+      "output_card_id": "virtual_omen_01"
+    }
+  ]
+}

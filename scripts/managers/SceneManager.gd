@@ -5,6 +5,7 @@ extends Node
 
 # ========== 场景路径常量 ==========
 const SCENE_MAIN_MENU: String = "res://MainMenu.tscn"
+const SCENE_LOAD_GAME: String = "res://scenes/load_game.tscn"
 const SCENE_GAME: String = "res://scenes/game_scene.tscn"
 const SCENE_GALLERY: String = "res://scenes/gallery.tscn"
 
@@ -62,15 +63,16 @@ func go_to_main_menu() -> void:
 ## 开始新游戏
 func start_new_game() -> void:
 	DebugLogger.info("SceneManager: 开始新游戏", "SceneManager")
-	# TODO: 初始化新游戏数据
-	change_scene(SCENE_GAME)
+	# 先跳转到加载场景，加载场景会初始化所有管理器后跳转到游戏场景
+	change_scene(SCENE_LOAD_GAME)
 
 ## 继续游戏
 func continue_game() -> void:
 	DebugLogger.info("SceneManager: 继续游戏", "SceneManager")
 	if has_save_file():
 		# TODO: 加载保存数据
-		change_scene(SCENE_GAME)
+		# 先跳转到加载场景，加载场景会初始化所有管理器后跳转到游戏场景
+		change_scene(SCENE_LOAD_GAME)
 	else:
 		DebugLogger.warning("SceneManager: 没有找到保存文件", "SceneManager")
 		SignalBus.dialog_shown.emit("no_save_file")

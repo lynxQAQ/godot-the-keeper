@@ -1,8 +1,8 @@
+class_name CardUsage
 extends Node
 
 ## 卡牌使用系统
 ## 负责卡牌使用验证、逻辑执行、反馈等
-## 注意：不使用class_name，因为它是autoload单例
 
 # ========== 初始化 ==========
 func _ready() -> void:
@@ -25,7 +25,10 @@ func validate_card_usage(card_id: String, position: Vector2i = Vector2i(-1, -1))
 	}
 	
 	# 检查卡牌是否存在
-	var card = CardLibrary.get_card(card_id)
+	if GameManagers.CardLibrary == null:
+		result["error"] = "CardLibrary未初始化"
+		return result
+	var card = GameManagers.CardLibrary.get_card(card_id)
 	if card == null:
 		result["error"] = "卡牌不存在: " + card_id
 		return result
@@ -75,7 +78,9 @@ func use_card(card_id: String, position: Vector2i = Vector2i(-1, -1)) -> bool:
 		DebugLogger.warning("CardUsage: 卡牌使用验证失败: " + validation["error"], "CardUsage")
 		return false
 	
-	var card = CardLibrary.get_card(card_id)
+	if GameManagers.CardLibrary == null:
+		return false
+	var card = GameManagers.CardLibrary.get_card(card_id)
 	if card == null:
 		return false
 	
@@ -101,7 +106,7 @@ func use_card(card_id: String, position: Vector2i = Vector2i(-1, -1)) -> bool:
 ## 使用实体类卡牌
 func _use_entity_card(card: CardData, position: Vector2i) -> bool:
 	# 创建实体构造体
-	if ConstructManager == null:
+	if GameManagers.ConstructManager == null:
 		DebugLogger.error("CardUsage: ConstructManager未找到", "CardUsage")
 		return false
 	
@@ -141,7 +146,7 @@ func _use_entity_card(card: CardData, position: Vector2i) -> bool:
 	if world_root:
 		world_root.add_child(entity)
 		# 注册到ConstructManager
-		if ConstructManager.register_entity(entity):
+		if GameManagers.ConstructManager.register_entity(entity):
 			DebugLogger.info("CardUsage: 成功生成实体构造体: " + entity_data.id, "CardUsage")
 			return true
 		else:
@@ -155,7 +160,7 @@ func _use_entity_card(card: CardData, position: Vector2i) -> bool:
 ## 使用虚体类卡牌
 func _use_virtual_card(card: CardData, position: Vector2i) -> bool:
 	# 创建虚体构造体
-	if ConstructManager == null:
+	if GameManagers.ConstructManager == null:
 		DebugLogger.error("CardUsage: ConstructManager未找到", "CardUsage")
 		return false
 	
@@ -201,7 +206,7 @@ func _use_virtual_card(card: CardData, position: Vector2i) -> bool:
 	if world_root:
 		world_root.add_child(virtual)
 		# 注册到ConstructManager
-		if ConstructManager.register_virtual(virtual):
+		if GameManagers.ConstructManager.register_virtual(virtual):
 			DebugLogger.info("CardUsage: 成功生成虚体构造体: " + virtual_data.id, "CardUsage")
 			return true
 		else:
@@ -214,17 +219,20 @@ func _use_virtual_card(card: CardData, position: Vector2i) -> bool:
 
 ## 消耗资源
 func _consume_resources(card: CardData) -> bool:
+	if GameManagers.ResourceManager == null:
+		return false
+	
 	# 消耗表构造力
 	if card.cost_table_construct > 0:
-		if not ResourceManager.consume_table_construct(card.cost_table_construct):
+		if not GameManagers.ResourceManager.consume_table_construct(card.cost_table_construct):
 			return false
 	
 	# 消耗里构造力
 	if card.cost_inner_construct > 0:
-		if not ResourceManager.consume_inner_construct(card.cost_inner_construct):
+		if not GameManagers.ResourceManager.consume_inner_construct(card.cost_inner_construct):
 			# 如果里构造力不足，回退表构造力
 			if card.cost_table_construct > 0:
-				ResourceManager.add_table_construct(card.cost_table_construct)
+				GameManagers.ResourceManager.add_table_construct(card.cost_table_construct)
 			return false
 	
 	return true

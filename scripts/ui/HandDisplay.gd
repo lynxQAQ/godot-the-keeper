@@ -23,6 +23,9 @@ signal card_used(card_id: String)
 func _ready() -> void:
 	if hand_container == null:
 		push_error("HandDisplay: HandContainer节点未找到")
+	
+	# 确保可以接收鼠标事件（用于展开区域）
+	mouse_filter = Control.MOUSE_FILTER_PASS
 
 # ========== 设置手牌 ==========
 func set_hand(hand_instance: Hand) -> void:
@@ -71,8 +74,10 @@ func _update_display() -> void:
 		return
 	
 	# 创建卡牌UI
+	if GameManagers.CardLibrary == null:
+		return
 	for card_id in card_ids:
-		var card = CardLibrary.get_card(card_id)
+		var card = GameManagers.CardLibrary.get_card(card_id)
 		if card:
 			_create_card_ui(card)
 		else:
@@ -148,3 +153,20 @@ func _select_card(card_id: String) -> void:
 # ========== 刷新显示 ==========
 func refresh() -> void:
 	_update_display()
+
+# ========== 公共接口 ==========
+## 获取手牌数据引用
+func get_hand() -> Hand:
+	return hand
+
+## 获取预备区数据引用
+func get_reserve() -> CardReserve:
+	return reserve
+
+## 检查是否显示手牌
+func is_showing_hand() -> bool:
+	return hand != null
+
+## 检查是否显示预备区
+func is_showing_reserve() -> bool:
+	return reserve != null

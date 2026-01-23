@@ -99,10 +99,13 @@ func _setup_collision() -> void:
 	if not area_2d:
 		area_2d = Area2D.new()
 		area_2d.name = "Area2D"
-		area_2d.input_pickable = true  # 允许接收输入事件
+		# 重要：禁用 input_pickable，让 GridSystemInner 的 _input 处理点击
+		# GridCell 的 Area2D 只用于碰撞检测，不用于输入处理
+		area_2d.input_pickable = false
 		add_child(area_2d)
 	else:
-		area_2d.input_pickable = true  # 确保可以接收输入事件
+		# 确保 input_pickable 为 false
+		area_2d.input_pickable = false
 	
 	# 查找或创建CollisionPolygon2D
 	collision_polygon = area_2d.get_node_or_null("CollisionPolygon2D")
@@ -119,13 +122,10 @@ func _connect_area_signals() -> void:
 	if not area_2d:
 		return
 	
-	# 连接鼠标进入和离开信号
-	if not area_2d.mouse_entered.is_connected(_on_mouse_entered):
-		area_2d.mouse_entered.connect(_on_mouse_entered)
-	if not area_2d.mouse_exited.is_connected(_on_mouse_exited):
-		area_2d.mouse_exited.connect(_on_mouse_exited)
-	if not area_2d.input_event.is_connected(_on_input_event):
-		area_2d.input_event.connect(_on_input_event)
+	# 注意：由于 input_pickable = false，Area2D 不会接收输入事件
+	# 鼠标进入/离开和点击事件由 GridSystemInner 的 _input 统一处理
+	# 这里不再连接 Area2D 的输入信号
+	# 如果需要鼠标悬停效果，可以通过 GridSystemInner 的 hover 逻辑实现
 
 # ========== 绘制 ==========
 func _draw() -> void:

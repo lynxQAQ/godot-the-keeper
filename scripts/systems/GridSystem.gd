@@ -5,6 +5,11 @@ class_name GridSystem
 ## 管理网格地图的可视化和交互
 ## 适配 SubViewport 架构
 
+# 核心设计：数据与表现分离
+# GridMapManager：纯数据层，存储网格状态
+# GridCell：视觉表现（Sprite/等距瓦片）
+# GridSystem：协调两者 + 处理输入交互
+
 # ========== 预加载 ==========
 const Extensions = preload("res://scripts/utils/Extensions.gd")
 const GridCellScene = preload("res://scenes/worlds/GridCell.tscn")
@@ -38,6 +43,7 @@ var grid_cell_container: Node2D = null
 var grid_rule: GridSystemRule = null
 
 ## 等距原点：世界坐标，网格(0,0)在世界空间中的位置
+## 视觉原点——让网格在屏幕中居中显示
 var iso_origin: Vector2 = Vector2.ZERO
 
 ## 拖拽状态
@@ -49,6 +55,9 @@ var explored_grids_in_drag: Dictionary = {}  # 本次拖动中已处理的网格
 
 # ========== 生命周期 ==========
 func _ready():
+	# 确保 GridSystem 节点的 position 为 (0,0)，避免坐标偏移
+	position = Vector2.ZERO
+	
 	# 获取或创建Camera2D
 	camera = get_node_or_null("Camera2D") as Camera2D
 	if not camera:
@@ -96,18 +105,27 @@ func _on_viewport_size_changed():
 	pass 
 
 # ========== 初始化核心逻辑 ==========
+# 在等距（Isometric）坐标系下，计算一个“视觉原点 iso_origin”，让整个网格在当前视口中居中显示，并据此创建并摆放所有网格单元。
 func _update_iso_origin() -> void:
 	if not grid_manager: return
 	
 	# 获取当前 Viewport 的实际可视矩形大小
-	var view_size = get_viewport_rect().size
+	# 在 SubViewport 中，使用 get_visible_rect() 获取正确的尺寸
+	var viewport = get_viewport()
+	var view_size: Vector2
+	if viewport:
+		view_size = viewport.get_visible_rect().size
+	else:
+		view_size = get_viewport_rect().size
 	
-	# 计算网格整体的物理宽高（世界坐标系下）
+	# 计算网格整体的物理宽高（世界坐标系下） 计算整个等距网格的“物理边界”
+	# 在不创建任何节点的情况下，直接用数学推导出：左右上下的最远端
 	var min_x = (0 - (grid_size.y - 1)) * cell_size.x * 0.5
 	var max_x = ((grid_size.x - 1) - 0) * cell_size.x * 0.5
 	var min_y = 0.0
 	var max_y = ((grid_size.x - 1) + (grid_size.y - 1)) * cell_size.y * 0.5
 	
+	# 计算网格中心点
 	var grid_center_x = (min_x + max_x) / 2.0
 	var grid_center_y = (min_y + max_y) / 2.0
 	
@@ -179,20 +197,38 @@ func world_to_grid(world_pos: Vector2) -> Vector2i:
 # ========== 简化的输入处理 ==========
 # 使用 _input 确保能接收到所有输入事件（包括在 SubViewport 中）
 func _input(event: InputEvent) -> void:
-	if not camera: return
+	if not camera:
+		DebugLogger.debug("GridSystem: _input 收到事件但 camera 为空", "GridSystem")
+		return
+	
+	# 添加调试日志（仅记录鼠标按钮事件，不记录鼠标移动）
+	if event is InputEventMouseButton:
+		var mb_event = event as InputEventMouseButton
+		if mb_event.button_index == MOUSE_BUTTON_LEFT and mb_event.pressed:
+			DebugLogger.debug("GridSystem: _input 收到左键按下事件 - enable_interaction: " + str(enable_interaction) + ", is_dragging: " + str(is_dragging) + ", enable_drag: " + str(enable_drag) + ", space_pressed: " + str(Input.is_key_pressed(KEY_SPACE)), "GridSystem")
 	
 	# 1. 处理拖拽 (Pan)
+	var was_dragging_before_pan = is_dragging
 	if enable_drag:
 		_handle_pan_input(event)
+		if was_dragging_before_pan != is_dragging:
+			DebugLogger.debug("GridSystem: 拖拽状态改变 - is_dragging: " + str(was_dragging_before_pan) + " -> " + str(is_dragging), "GridSystem")
 	
 	# 2. 处理缩放 (Zoom)
 	if enable_zoom:
 		_handle_zoom_input(event)
 	
 	# 3. 处理交互 (Hover/Click/Continuous Explore) - 仅在未拖拽时
-	if enable_interaction and not is_dragging:
+	if not enable_interaction:
+		DebugLogger.debug("GridSystem: enable_interaction 为 false，跳过交互处理", "GridSystem")
+	elif is_dragging:
+		DebugLogger.debug("GridSystem: is_dragging 为 true，跳过交互处理", "GridSystem")
+	elif enable_interaction and not is_dragging:
 		# 检查鼠标是否在视口范围内
-		if not _is_mouse_in_viewport():
+		var mouse_in_viewport = _is_mouse_in_viewport()
+		DebugLogger.debug("GridSystem: _is_mouse_in_viewport() = " + str(mouse_in_viewport), "GridSystem")
+		if not mouse_in_viewport:
+			DebugLogger.debug("GridSystem: 鼠标不在视口内，跳过处理", "GridSystem")
 			# 鼠标移出视口，清除 hover 状态和连续开垦状态
 			if hovered_grid != Vector2i(-1, -1):
 				_set_grid_hovered_state(hovered_grid, false)
@@ -201,6 +237,7 @@ func _input(event: InputEvent) -> void:
 				_end_continuous_explore()
 		else:
 			# 鼠标在视口内，正常处理 hover 和点击
+			DebugLogger.debug("GridSystem: 鼠标在视口内，处理事件类型: " + str(event.get_class()), "GridSystem")
 			if event is InputEventMouseMotion:
 				# 使用 get_global_mouse_position() 获取正确的世界坐标（自动处理 Camera 变换）
 				var mouse_world = get_global_mouse_position()
@@ -209,16 +246,21 @@ func _input(event: InputEvent) -> void:
 				if is_continuous_exploring:
 					_handle_continuous_explore(mouse_world)
 			elif event is InputEventMouseButton:
-				if event.button_index == MOUSE_BUTTON_LEFT:
-					if event.pressed:
+				var mb_event = event as InputEventMouseButton
+				DebugLogger.debug("GridSystem: 处理鼠标按钮事件 - button_index: " + str(mb_event.button_index) + ", pressed: " + str(mb_event.pressed), "GridSystem")
+				if mb_event.button_index == MOUSE_BUTTON_LEFT:
+					if mb_event.pressed:
 						# 左键按下：开始连续开垦模式
 						var mouse_world = get_global_mouse_position()
+						DebugLogger.debug("GridSystem: 左键按下，开始处理点击 - mouse_world: " + str(mouse_world), "GridSystem")
 						_start_continuous_explore(mouse_world)
 						# 同时处理点击逻辑（立即开垦当前网格）
 						_handle_click_logic(event, mouse_world)
 					else:
 						# 左键松开：结束连续开垦模式
 						_end_continuous_explore()
+			else:
+				DebugLogger.debug("GridSystem: 事件类型不是鼠标移动或按钮: " + str(event.get_class()), "GridSystem")
 	elif is_dragging:
 		# 拖拽时清除 hover 状态和连续开垦状态
 		if hovered_grid != Vector2i(-1, -1):
@@ -321,11 +363,16 @@ func _handle_pan_input(event: InputEvent) -> void:
 # ========== 修复后的缩放逻辑 ==========
 func _handle_zoom_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed:
-		if Input.is_key_pressed(KEY_CTRL) or Input.is_key_pressed(KEY_META):
-			if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-				_set_zoom(camera.zoom.x + zoom_step)
-			elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-				_set_zoom(camera.zoom.x - zoom_step)
+		# 按下ctrl
+		#if Input.is_key_pressed(KEY_CTRL) or Input.is_key_pressed(KEY_META):
+			#if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+				#_set_zoom(camera.zoom.x + zoom_step)
+			#elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+				#_set_zoom(camera.zoom.x - zoom_step)
+		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+			_set_zoom(camera.zoom.x + zoom_step)
+		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			_set_zoom(camera.zoom.x - zoom_step)
 
 func _set_zoom(target_zoom: float) -> void:
 	target_zoom = clamp(target_zoom, min_zoom, max_zoom)
@@ -389,11 +436,14 @@ func _handle_click_logic(event: InputEventMouseButton, mouse_world_pos: Vector2)
 							var secret_radius = 8.0
 							if area_parent.has("radius"):
 								secret_radius = area_parent.radius
+							
 							# 只有当鼠标在 Secret 的圆形范围内时才拦截
 							if distance <= secret_radius:
-								# 点击了 Secret，不处理网格点击
-								# Secret 的 input_event 信号会自己处理
-								return
+								# 点击了 Secret，手动触发 Secret 的点击信号
+								# 因为 _input 事件会阻止 Area2D 的 input_event 信号触发
+								if area_parent is Secret:
+									area_parent.secret_clicked.emit(area_parent)
+									return
 						else:
 							# 其他类型的 Area2D，直接拦截（可能是其他交互对象）
 							return
@@ -403,7 +453,10 @@ func _handle_click_logic(event: InputEventMouseButton, mouse_world_pos: Vector2)
 		if target_grid != Vector2i(-1, -1):
 			selected_grid = target_grid
 			var data = grid_manager.get_grid(target_grid)
+			DebugLogger.debug("GridSystem: 点击网格 " + str(target_grid) + " - grid_type: " + str(data.grid_type if data else "null") + ", is_unexplored: " + str(data.is_unexplored() if data else "null"), "GridSystem")
 			grid_clicked.emit(target_grid, data)
+		else:
+			DebugLogger.warning("GridSystem: 未找到有效网格位置", "GridSystem")
 
 ## 开始连续开垦模式
 func _start_continuous_explore(mouse_world_pos: Vector2) -> void:
@@ -560,35 +613,50 @@ func resize_grid_map(new_size: Vector2i) -> void:
 
 # ========== 绘图 (Grid Lines) ==========
 func _draw() -> void:
-	if not show_grid_lines or not grid_manager: return
+	if not show_grid_lines or not grid_manager or iso_origin == Vector2.ZERO: 
+		return
 	
 	var color = Color(1.0, 1.0, 1.0, 0.2)
-	# 核心修改：动态获取当前视口矩形，不依赖缓存的 viewport_size
-	# get_visible_rect() 在 CanvasItem 中通常等同于视口大小 (如果是根节点)
-	# 为了保险，结合 Camera 的 transform 计算可见的世界区域
-	var viewport_rect = get_viewport_rect()
-	var cam_transform = get_viewport_transform().affine_inverse()
-	var visible_rect_world = Rect2(cam_transform * viewport_rect.position, cam_transform * viewport_rect.size)
+	
+	# 获取视口尺寸用于视锥剔除
+	var viewport = get_viewport()
+	var viewport_size: Vector2
+	if viewport:
+		viewport_size = viewport.get_visible_rect().size
+	else:
+		viewport_size = get_viewport_rect().size
 	
 	# 扩大一点渲染范围防止边缘闪烁
-	visible_rect_world = visible_rect_world.grow(max(cell_size.x, cell_size.y))
+	var margin = max(cell_size.x, cell_size.y) * 3.0
+	# 计算可见区域（基于 iso_origin 的位置）
+	# iso_origin 是网格(0,0)在本地坐标系中的位置
+	var visible_min_x = iso_origin.x - margin
+	var visible_max_x = iso_origin.x + viewport_size.x + margin
+	var visible_min_y = iso_origin.y - margin
+	var visible_max_y = iso_origin.y + viewport_size.y + margin
 
 	for x in range(grid_size.x):
 		for y in range(grid_size.y):
+			# 计算网格中心位置（相对于GridSystem节点的本地坐标）
+			# iso_origin 已经考虑了视口居中的偏移
 			var center = iso_origin + iso_to_local(Vector2i(x, y))
 			
-			# 简单的视锥剔除：如果中心点不在屏幕范围内，不绘制
-			if not visible_rect_world.has_point(center):
+			# 简单的视锥剔除：如果中心点不在可见范围内，不绘制
+			if center.x < visible_min_x or center.x > visible_max_x:
+				continue
+			if center.y < visible_min_y or center.y > visible_max_y:
 				continue
 				
 			var hw = cell_size.x * 0.5
 			var hh = cell_size.y * 0.5
 			
+			# 计算菱形的四个顶点（相对于GridSystem节点的本地坐标）
 			var top = center + Vector2(0, -hh)
 			var right = center + Vector2(hw, 0)
 			var bottom = center + Vector2(0, hh)
 			var left = center + Vector2(-hw, 0)
 			
+			# 绘制菱形边框
 			draw_line(top, right, color)
 			draw_line(right, bottom, color)
 			draw_line(bottom, left, color)

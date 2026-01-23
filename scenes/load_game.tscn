@@ -1,0 +1,39 @@
+[gd_scene load_steps=7 format=3 uid="uid://56wrcf6peff5"]
+
+[ext_resource type="Script" uid="uid://dajqbybc7j84u" path="res://scripts/ui/LoadGame.gd" id="1_loadgame"]
+[ext_resource type="Script" uid="uid://b3061xfiamh6b" path="res://scripts/managers/ResourceManager.gd" id="2_resourcemanager"]
+[ext_resource type="Script" uid="uid://qdqnbp7yfjnx" path="res://scripts/managers/ConstructManager.gd" id="3_ykd1s"]
+[ext_resource type="Script" uid="uid://b5nqr6n77gpqa" path="res://scripts/managers/InvestigatorManager.gd" id="4_investigatormanager"]
+[ext_resource type="Script" uid="uid://c8iqbybc7j83t" path="res://scripts/systems/CardLibrary.gd" id="5_cardlibrary"]
+[ext_resource type="Script" uid="uid://bsfk7j3dbhu3k" path="res://scripts/systems/CardUsage.gd" id="6_cardusage"]
+
+[node name="LoadGame" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_loadgame")
+
+[node name="BackgroundImage" type="TextureRect" parent="."]
+layout_mode = 0
+offset_right = 1920.0
+offset_bottom = 1080.0
+
+[node name="Managers" type="Node" parent="."]
+
+[node name="ResourceManager" type="Node" parent="Managers"]
+script = ExtResource("2_resourcemanager")
+
+[node name="ConstructManager" type="Node" parent="Managers"]
+script = ExtResource("3_ykd1s")
+
+[node name="InvestigatorManager" type="Node" parent="Managers"]
+script = ExtResource("4_investigatormanager")
+
+[node name="CardLibrary" type="Node" parent="Managers"]
+script = ExtResource("5_cardlibrary")
+
+[node name="CardUsage" type="Node" parent="Managers"]
+script = ExtResource("6_cardusage")

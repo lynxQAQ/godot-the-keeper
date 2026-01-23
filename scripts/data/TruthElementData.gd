@@ -24,6 +24,15 @@ class_name TruthElementData
 ## 密度（0.0-1.0）
 @export var density: float = 0.5
 
+## 因果属性（0-100）
+@export var causality: int = 0
+
+## 物质属性（0-100）
+@export var material: int = 0
+
+## 超然属性（0-100）
+@export var transcendence: int = 0
+
 ## 移动速度（网格/秒）
 @export var move_speed: float = 0.5
 
@@ -37,12 +46,15 @@ class_name TruthElementData
 var last_move_time: float = 0.0
 
 # ========== 构造函数 ==========
-func _init(pos: Vector2i = Vector2i.ZERO, serial_param: int = 1, density_param: float = 0.5):
+func _init(pos: Vector2i = Vector2i.ZERO, serial_param: int = 1, density_param: float = 0.5, causality_param: int = 0, material_param: int = 0, transcendence_param: int = 0):
 	grid_pos = pos
 	world_pos = Vector2.ZERO
 	state = Constants.TRUTH_STATE_ACTIVE
 	serial = serial_param
 	density = density_param
+	causality = causality_param
+	material = material_param
+	transcendence = transcendence_param
 	move_speed = 0.5
 	target_grid_pos = Vector2i(-1, -1)
 	move_cooldown = 2.0
@@ -71,6 +83,15 @@ func can_move(current_time: float) -> bool:
 func update_move_time(current_time: float) -> void:
 	last_move_time = current_time
 
+## 获取最高属性类型（0: 因果, 1: 物质, 2: 超然）
+func get_dominant_attribute() -> int:
+	if causality >= material and causality >= transcendence:
+		return 0  # 因果
+	elif material >= transcendence:
+		return 1  # 物质
+	else:
+		return 2  # 超然
+
 # ========== 序列化接口 ==========
 ## 序列化为字典
 func to_dict() -> Dictionary:
@@ -81,6 +102,9 @@ func to_dict() -> Dictionary:
 		"state": state,
 		"serial": serial,
 		"density": density,
+		"causality": causality,
+		"material": material,
+		"transcendence": transcendence,
 		"move_speed": move_speed,
 		"target_grid_pos": {"x": target_grid_pos.x, "y": target_grid_pos.y},
 		"move_cooldown": move_cooldown,
@@ -102,6 +126,9 @@ func from_dict(data: Dictionary) -> void:
 	state = data.get("state", Constants.TRUTH_STATE_ACTIVE)
 	serial = data.get("serial", 1)
 	density = data.get("density", 0.5)
+	causality = data.get("causality", 0)
+	material = data.get("material", 0)
+	transcendence = data.get("transcendence", 0)
 	move_speed = data.get("move_speed", 0.5)
 	
 	if data.has("target_grid_pos"):
